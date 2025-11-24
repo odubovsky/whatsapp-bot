@@ -362,6 +362,6 @@ For issues, questions, or suggestions:
 
 ## Acknowledgments
 
-- Reference Go implementation: `/Users/odedd/coding/whatsapp-mcp`
+- Reference Go implementation: **`/Users/odedd/coding/whatsapp-mcp`**
 - Perplexity AI for language model API
 - WhatsApp for messaging platform
