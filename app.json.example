@@ -1,0 +1,56 @@
+{
+  "whatsapp": {
+    "phone_number": "YOUR_PHONE_NUMBER_HERE"
+  },
+  "monitored_entities": [
+    {
+      "type": "group",
+      "jid": "GROUP_JID_HERE",
+      "name": "Example Group",
+      "prompt": "You are a helpful assistant for this group. Respond to questions concisely and be friendly.",
+      "persona": "friendly and helpful",
+      "session_memory": {
+        "reset_mode": "duration",
+        "reset_minutes": 15,
+        "timezone": "UTC"
+      }
+    },
+    {
+      "type": "user",
+      "phone": "USER_PHONE_HERE",
+      "name": "Example User",
+      "prompt": "You are a personal assistant. Help with tasks, reminders, and general questions.",
+      "persona": "professional and organized",
+      "response_delay": 0,
+      "session_memory": {
+        "reset_mode": "time",
+        "reset_time": "02:00",
+        "timezone": "UTC"
+      }
+    }
+  ],
+  "polling": {
+    "interval_seconds": 5
+  },
+  "response_delay": 5,
+  "rotation": {
+    "messages_retention_days": 7,
+    "cleanup_interval_hours": 24
+  },
+  "session_memory": {
+    "reset_mode": "time",
+    "reset_time": "02:00",
+    "timezone": "UTC"
+  },
+  "vitality": {
+    "enabled": true,
+    "time": "09:00",
+    "timezone": "UTC",
+    "message": "🤖 WhatsApp Bot vitality check - All systems operational"
+  },
+  "perplexity": {
+    "model": "sonar-pro",
+    "temperature": 0.7,
+    "max_tokens": 1000
+  }
+}
