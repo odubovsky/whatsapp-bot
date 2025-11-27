@@ -57,11 +57,17 @@ class WhatsAppConfig:
 class PollingConfig:
     """Message polling settings"""
     interval_seconds: int = 5
+    max_concurrent_messages: int = 10
+    processing_timeout_seconds: int = 300
+    max_retries: int = 3
+    lookback_hours: int = 24
 
     def validate(self):
         """Validate polling configuration"""
         if self.interval_seconds < 1 or self.interval_seconds > 300:
             raise ValueError("polling.interval_seconds must be between 1 and 300")
+        if self.lookback_hours < 1 or self.lookback_hours > 168:
+            raise ValueError("polling.lookback_hours must be between 1 and 168 (1 week)")
 
 
 @dataclass
@@ -142,6 +148,7 @@ class MonitoredEntity:
     prompt_is_file: bool = False
     session_memory: Optional[SessionMemoryConfig] = None  # Optional per-entity override
     response_delay: Optional[int] = None  # Seconds to wait before responding (per-entity override)
+    hey_bot: bool = False  # Require wake word (e.g., "hey bot", "hello bot", "הי בוט", "היי בוט") to respond
 
     def get_identifier(self) -> str:
         """Returns JID or phone@s.whatsapp.net"""
@@ -168,6 +175,8 @@ class MonitoredEntity:
             self.session_memory.validate()
         if self.response_delay is not None and self.response_delay < 0:
             raise ValueError(f"response_delay for '{self.name}' must be >= 0")
+        if not isinstance(self.hey_bot, bool):
+            raise ValueError(f"hey_bot for '{self.name}' must be boolean, got {type(self.hey_bot)}")
 
 
 @dataclass

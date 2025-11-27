@@ -73,6 +73,7 @@ class PerplexityClient:
 
         except httpx.HTTPStatusError as e:
             logger.error(f"Perplexity API error: {e.response.status_code} - {e.response.text}")
+            logger.error(f"Request payload: {payload}")
             raise Exception(f"Perplexity API returned {e.response.status_code}")
 
         except Exception as e:
@@ -117,6 +118,72 @@ class MessageAgent:
         self.max_context_messages = 20
         # Default response delay (seconds) before LLM kicks in
         self.response_delay_default = getattr(config, "response_delay_default", 5)
+        # Lock to prevent concurrent polling cycles
+        self._processing_lock = asyncio.Lock()
+
+    @staticmethod
+    def check_and_strip_wake_word(content: str) -> tuple:
+        """
+        Check if message starts with wake word and return (has_wake_word, stripped_content).
+
+        Supports multiple variations:
+        - English: "hey bot", "hello bot", "hi bot" (case-insensitive)
+        - Hebrew: "הי בוט", "היי בוט", "הלו בוט"
+
+        Returns:
+            (True, content_without_wake_word) if wake word found
+            (False, original_content) if wake word not found
+
+        Examples:
+            >>> check_and_strip_wake_word("hey bot what time is it")
+            (True, "what time is it")
+
+            >>> check_and_strip_wake_word("hello bot how are you")
+            (True, "how are you")
+
+            >>> check_and_strip_wake_word("הי בוט מה השעה")
+            (True, "מה השעה")
+
+            >>> check_and_strip_wake_word("היי בוט ספר לי")
+            (True, "ספר לי")
+
+            >>> check_and_strip_wake_word("hello everyone")
+            (False, "hello everyone")
+        """
+        if not content or not isinstance(content, str):
+            return False, content
+
+        # Normalize: strip whitespace, lowercase for English
+        normalized = content.strip()
+        normalized_lower = normalized.lower()
+
+        # English wake word variations
+        english_wake_words = [
+            ("hello bot", 9),  # (pattern, length)
+            ("hey bot", 7),
+            ("hi bot", 6),
+        ]
+
+        for wake_word, length in english_wake_words:
+            if normalized_lower.startswith(wake_word):
+                # Strip wake word and any following whitespace
+                stripped = normalized[length:].lstrip()
+                return True, stripped
+
+        # Hebrew wake word variations
+        hebrew_wake_words = [
+            ("הלו בוט", 7),    # "hello bot" in Hebrew
+            ("היי בוט", 7),    # "hey bot" in Hebrew (with extra yod)
+            ("הי בוט", 6),     # "hi bot" in Hebrew
+        ]
+
+        for wake_word, length in hebrew_wake_words:
+            if normalized.startswith(wake_word):
+                # Strip wake word and any following whitespace
+                stripped = normalized[length:].lstrip()
+                return True, stripped
+
+        return False, content
 
     def _resolve_prompt(self, prompt_value: str, prompt_is_file: bool = False) -> str:
         """Load prompt text, supporting file paths when requested or auto-detected."""
@@ -328,32 +395,48 @@ class MessageAgent:
         logger.info("Message agent stopped")
 
     async def process_new_messages(self):
-        """Process all unprocessed messages from database"""
-        try:
-            # First, sync messages from Go bridge database
-            # Include active monitored entities and self JID if self is active
-            monitored_jids = [entity.get_identifier() for entity in self.config.monitored_entities if entity.active]
-            if self.config.self.active:
-                monitored_jids.append(self.config.get_self_jid())
+        """Process messages with lock to prevent concurrent cycles"""
 
-            synced_count = self.db.sync_from_go_bridge(monitored_jids=monitored_jids)
+        # Skip if already processing
+        if self._processing_lock.locked():
+            logger.debug("Polling cycle in progress, skipping")
+            return
 
-            if synced_count > 0:
-                logger.info(f"Synced {synced_count} new messages from Go bridge")
+        async with self._processing_lock:
+            try:
+                self._maybe_reload_config()
 
-            # Get unprocessed messages
-            messages = self.db.get_unprocessed_messages(limit=10)
+                # Sync from Go bridge
+                monitored_jids = [e.get_identifier() for e in self.config.monitored_entities if e.active]
+                if self.config.self.active:
+                    monitored_jids.append(self.config.get_self_jid())
 
-            if not messages:
-                return  # No new messages
+                synced_count = self.db.sync_from_go_bridge(
+                    monitored_jids=monitored_jids,
+                    lookback_hours=24
+                )
 
-            logger.info(f"Processing {len(messages)} new messages...")
+                if synced_count > 0:
+                    logger.info(f"Synced {synced_count} new message(s) from Go bridge")
 
-            for msg in messages:
-                await self.process_message(msg)
+                # Atomically fetch and lock messages
+                messages = self.db.fetch_and_lock_messages(limit=10, timeout_seconds=300)
 
-        except Exception as e:
-            logger.error(f"Error processing messages: {e}", exc_info=True)
+                if not messages:
+                    return
+
+                logger.info(f"Processing {len(messages)} new messages...")
+
+                for msg in messages:
+                    try:
+                        await self.process_message(msg)
+                        self.db.mark_message_completed(msg["id"])
+                    except Exception as e:
+                        logger.error(f"Failed to process {msg['id']}: {e}", exc_info=True)
+                        self.db.mark_message_failed(msg["id"], max_retries=3)
+
+            except Exception as e:
+                logger.error(f"Error in polling cycle: {e}", exc_info=True)
 
     async def process_message(self, message: Dict):
         """
@@ -364,12 +447,23 @@ class MessageAgent:
         """
         try:
             msg_id = message["id"]
+
+            # IDEMPOTENCY CHECK
+            cursor = self.db.conn.cursor()
+            cursor.execute("SELECT processing_status FROM messages WHERE id = ?", (msg_id,))
+            row = cursor.fetchone()
+            if row and row[0] == 2:
+                logger.info(f"Message {msg_id} already completed, skipping")
+                return
+
             chat_jid = message["chat_jid"]
             sender = message["sender"]
             content = message["content"]
             is_from_me = message.get("is_from_me", False)
 
-            logger.info(f"Processing message {msg_id} from {chat_jid}")
+            # Show first 50 chars of message for visibility
+            content_preview = content[:50] + "..." if len(content) > 50 else content
+            logger.info(f"Processing message {msg_id} from {chat_jid}: '{content_preview}'")
 
             # Determine if message is from the bot itself
             self_jid = self.config.get_self_jid()
@@ -378,7 +472,7 @@ class MessageAgent:
             # Skip bot-originated messages entirely (prevents ack/loops)
             if from_bot:
                 logger.info(f"Skipping bot-originated message {msg_id}")
-                self.db.mark_message_processed(msg_id)
+                # Marking handled by caller
                 return
 
             # Check for config changes before processing
@@ -396,21 +490,21 @@ class MessageAgent:
                 last_response = self.last_bot_response.get(chat_jid)
                 if is_from_me and last_response and content == last_response:
                     logger.info(f"Skipping bot-sent echo {msg_id} in {chat_jid}")
-                    self.db.mark_message_processed(msg_id)
+                    # Marking handled by caller
                     return
 
             # Check if this is a message to yourself
             if self.config.is_self_message(chat_jid):
                 if not self.config.self.active:
                     logger.info(f"Self messages disabled, skipping {msg_id}")
-                    self.db.mark_message_processed(msg_id)
+                    # Marking handled by caller
                     return
 
                 # IMPORTANT: For self-messages, both user and bot messages have is_from_me=1
                 # We identify bot responses by their message ID pattern (starts with "sent_")
                 if msg_id.startswith("sent_"):
                     logger.info(f"Skipping bot-sent self message {msg_id}")
-                    self.db.mark_message_processed(msg_id)
+                    # Marking handled by caller
                     return
 
                 # Use self configuration
@@ -439,7 +533,7 @@ class MessageAgent:
                 entity = self.config.get_entity_by_jid(chat_jid)
                 if not entity:
                     logger.warning(f"No active entity config for {chat_jid}, skipping")
-                    self.db.mark_message_processed(msg_id)
+                    # Marking handled by caller
                     return
 
                 prompt = entity.prompt
@@ -450,6 +544,29 @@ class MessageAgent:
                     prompt_is_file=getattr(entity, "prompt_is_file", False)
                 )
                 session_memory_config = self._get_session_memory_config(chat_jid)
+
+                # === WAKE WORD CHECK ===
+                # Skip wake word check for self messages (messages to yourself)
+                if hasattr(entity, 'hey_bot') and entity.hey_bot:
+                    has_wake_word, stripped_content = self.check_and_strip_wake_word(content)
+
+                    if not has_wake_word:
+                        logger.info(f"[BOT-IGNORE] Message {msg_id} from {chat_jid} - no wake word detected")
+                        # Return without processing (silent filter)
+                        # Caller will mark as completed
+                        return
+
+                    # Use stripped content for LLM
+                    content = stripped_content
+
+                    # Validate content is not empty after stripping
+                    if not content or not content.strip():
+                        logger.warning(f"[BOT-IGNORE] Message {msg_id} has empty content after wake word stripping")
+                        # Return without processing
+                        return
+
+                    logger.info(f"[BOT-ACTIVATED] Wake word detected in {msg_id}, stripped to: {content[:50]}...")
+                # === END WAKE WORD CHECK ===
 
             event_time = self._parse_timestamp(message.get("timestamp"))
             session_memory_config = session_memory_config or self.config.session_memory
@@ -465,7 +582,7 @@ class MessageAgent:
                 )
                 if not proceed:
                     logger.info(f"User responded within {response_delay}s for {msg_id}; skipping bot reply.")
-                    self.db.mark_message_processed(msg_id)
+                    # Marking handled by caller
                     return
 
             # Load and prune context based on per-entity session memory
@@ -530,15 +647,12 @@ class MessageAgent:
             except Exception:
                 logger.warning("Failed to update session context", exc_info=True)
 
-            # Mark message as processed
-            self.db.mark_message_processed(msg_id)
-
             logger.info(f"✅ Processed message {msg_id}")
 
         except Exception as e:
             logger.error(f"Error processing message {message.get('id')}: {e}", exc_info=True)
-            # Mark as processed anyway to avoid infinite retry
-            self.db.mark_message_processed(message["id"])
+            # Re-raise to let caller handle marking as failed
+            raise
 
     async def query_llm(self, prompt: str, context: List[Dict], message: str) -> str:
         """
@@ -554,15 +668,18 @@ class MessageAgent:
         """
         try:
             # Build messages array for API - prompt is already augmented with context summary
+            # Context is included as text in the system prompt, not as separate messages
             messages = [{"role": "system", "content": prompt}]
-            for entry in context:
-                role = entry.get("role", "user")
-                content = entry.get("content", "")
-                if content:
-                    messages.append({"role": role, "content": content})
+
+            # Validate user message is not empty
+            if not message or not message.strip():
+                logger.error("Cannot send empty message to LLM")
+                return "Please provide a message with content after the wake word."
+
+            # Add the current user message
             messages.append({"role": "user", "content": message})
 
-            logger.info(f"Querying Perplexity with {len(messages)} messages (context messages: {len(context)})")
+            logger.info(f"Querying Perplexity with {len(messages)} messages (context in system prompt: {len(context)} entries)")
             logger.debug(f"System prompt: {prompt[:200]}...")
 
             # Call Perplexity API

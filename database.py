@@ -122,20 +122,135 @@ class Database:
 
         self.conn.commit()
 
+        # Run schema migration if needed
+        self.migrate_schema_v2()
+
+        # Clear pending messages on startup (start fresh)
+        self.clear_pending_messages_on_startup()
+
+    def migrate_schema_v2(self):
+        """Migrate schema to add processing state columns"""
+        import logging
+        logger = logging.getLogger(__name__)
+
+        cursor = self.conn.cursor()
+
+        # Check current columns
+        cursor.execute("PRAGMA table_info(messages)")
+        columns = [row[1] for row in cursor.fetchall()]
+
+        migration_needed = False
+
+        # Add each column individually if missing
+        if 'processing_status' not in columns:
+            logger.info("Adding processing_status column...")
+            cursor.execute("ALTER TABLE messages ADD COLUMN processing_status INTEGER DEFAULT 0")
+            migration_needed = True
+
+        if 'processing_started_at' not in columns:
+            logger.info("Adding processing_started_at column...")
+            cursor.execute("ALTER TABLE messages ADD COLUMN processing_started_at TIMESTAMP")
+            migration_needed = True
+
+        if 'processing_completed_at' not in columns:
+            logger.info("Adding processing_completed_at column...")
+            cursor.execute("ALTER TABLE messages ADD COLUMN processing_completed_at TIMESTAMP")
+            migration_needed = True
+
+        if 'synced_at' not in columns:
+            logger.info("Adding synced_at column...")
+            cursor.execute("ALTER TABLE messages ADD COLUMN synced_at TIMESTAMP")
+            migration_needed = True
+
+        if 'retry_count' not in columns:
+            logger.info("Adding retry_count column...")
+            cursor.execute("ALTER TABLE messages ADD COLUMN retry_count INTEGER DEFAULT 0")
+            migration_needed = True
+
+        if migration_needed:
+            logger.info("Creating indexes...")
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_processing_status
+                ON messages(processing_status, timestamp)
+            """)
+
+            logger.info("Migrating existing data...")
+            cursor.execute("UPDATE messages SET synced_at = created_at WHERE synced_at IS NULL")
+            cursor.execute("UPDATE messages SET processing_status = 2 WHERE processed = 1")
+
+            self.conn.commit()
+            logger.info("✅ Schema migration complete")
+
+    def clear_pending_messages_on_startup(self):
+        """Mark all pending/in-progress messages as completed and clear all sessions on startup to start fresh"""
+        import logging
+        logger = logging.getLogger(__name__)
+
+        cursor = self.conn.cursor()
+
+        # Count pending messages
+        cursor.execute("""
+            SELECT COUNT(*) FROM messages
+            WHERE processing_status IN (0, 1)
+        """)
+        pending_count = cursor.fetchone()[0]
+
+        # Count existing sessions
+        cursor.execute("SELECT COUNT(*) FROM chat_sessions")
+        session_count = cursor.fetchone()[0]
+
+        if pending_count > 0 or session_count > 0:
+            logger.info(f"Clearing {pending_count} pending message(s) and {session_count} session(s) from previous run...")
+
+            # Mark all pending/in-progress messages as completed
+            if pending_count > 0:
+                cursor.execute("""
+                    UPDATE messages
+                    SET processing_status = 2,
+                        processing_completed_at = CURRENT_TIMESTAMP,
+                        processed = 1
+                    WHERE processing_status IN (0, 1)
+                """)
+
+            # Delete all chat sessions to start fresh
+            if session_count > 0:
+                cursor.execute("DELETE FROM chat_sessions")
+
+            self.conn.commit()
+            logger.info(f"✅ Cleared {pending_count} pending message(s) and {session_count} session(s) - starting fresh")
+
     # ==========================================
     # MESSAGE OPERATIONS
     # ==========================================
 
     def insert_message(self, msg_id: str, chat_jid: str, sender: str,
-                       content: str, timestamp: datetime, is_from_me: bool):
-        """Store new message"""
+                       content: str, timestamp: datetime, is_from_me: bool) -> bool:
+        """
+        Store new message (idempotent - preserves processing state).
+
+        Returns:
+            True if new message was inserted, False if message already existed
+        """
         cursor = self.conn.cursor()
+
+        # Try to insert new message
         cursor.execute("""
-            INSERT OR REPLACE INTO messages
-            (id, chat_jid, sender, content, timestamp, is_from_me, processed)
-            VALUES (?, ?, ?, ?, ?, ?, 0)
+            INSERT OR IGNORE INTO messages
+            (id, chat_jid, sender, content, timestamp, is_from_me,
+             processing_status, synced_at)
+            VALUES (?, ?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP)
         """, (msg_id, chat_jid, sender, content, timestamp, is_from_me))
+
+        inserted = cursor.rowcount > 0
+
+        # If message exists, only update synced_at (don't overwrite state)
+        if not inserted:
+            cursor.execute("""
+                UPDATE messages SET synced_at = CURRENT_TIMESTAMP WHERE id = ?
+            """, (msg_id,))
+
         self.conn.commit()
+        return inserted
 
     def get_unprocessed_messages(self, limit: int = 10) -> List[Dict]:
         """
@@ -154,13 +269,91 @@ class Database:
         return [dict(row) for row in cursor.fetchall()]
 
     def mark_message_processed(self, msg_id: str):
-        """Mark message as processed"""
+        """Mark message as processed (legacy method - prefer mark_message_completed)"""
         cursor = self.conn.cursor()
         cursor.execute("""
             UPDATE messages
             SET processed = 1
             WHERE id = ?
         """, (msg_id,))
+        self.conn.commit()
+
+    def fetch_and_lock_messages(self, limit: int = 10, timeout_seconds: int = 300) -> List[Dict]:
+        """
+        Atomically fetch unprocessed messages and mark as processing.
+        Includes retry logic for timed-out messages.
+        """
+        cursor = self.conn.cursor()
+        timeout_threshold = datetime.now() - timedelta(seconds=timeout_seconds)
+
+        # Start atomic transaction
+        self.conn.execute("BEGIN IMMEDIATE")
+
+        try:
+            # Find messages to process (including own messages for testing/triggering bot)
+            cursor.execute("""
+                SELECT id FROM messages
+                WHERE (
+                    (processing_status = 0)  -- Fresh messages
+                    OR
+                    (processing_status = 1 AND processing_started_at < ? AND retry_count < 3)
+                )
+                ORDER BY timestamp ASC
+                LIMIT ?
+            """, (timeout_threshold, limit))
+
+            message_ids = [row[0] for row in cursor.fetchall()]
+
+            if not message_ids:
+                self.conn.commit()
+                return []
+
+            # Mark as processing atomically
+            placeholders = ','.join('?' * len(message_ids))
+            cursor.execute(f"""
+                UPDATE messages
+                SET processing_status = 1,
+                    processing_started_at = CURRENT_TIMESTAMP,
+                    retry_count = retry_count + 1
+                WHERE id IN ({placeholders})
+            """, message_ids)
+
+            # Fetch full data
+            cursor.execute(f"""
+                SELECT * FROM messages WHERE id IN ({placeholders}) ORDER BY timestamp ASC
+            """, message_ids)
+
+            messages = [dict(row) for row in cursor.fetchall()]
+            self.conn.commit()
+            return messages
+
+        except Exception as e:
+            self.conn.rollback()
+            raise
+
+    def mark_message_completed(self, msg_id: str):
+        """Mark message as successfully processed"""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            UPDATE messages
+            SET processing_status = 2,
+                processing_completed_at = CURRENT_TIMESTAMP,
+                processed = 1
+            WHERE id = ?
+        """, (msg_id,))
+        self.conn.commit()
+
+    def mark_message_failed(self, msg_id: str, max_retries: int = 3):
+        """Mark message as failed (retry if under limit)"""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            UPDATE messages
+            SET processing_status = CASE
+                WHEN retry_count < ? THEN 0
+                ELSE 3
+            END
+            WHERE id = ?
+        """, (max_retries, msg_id))
         self.conn.commit()
 
     def get_messages_for_chat(self, chat_jid: str, limit: int = 50) -> List[Dict]:
@@ -543,14 +736,17 @@ class Database:
 
     def sync_from_go_bridge(self, bridge_db_path: str = "whatsapp-bridge/store/messages.db",
                             monitored_jids: List[str] = None,
-                            include_own_messages: bool = True) -> int:
+                            include_own_messages: bool = True,
+                            lookback_hours: int = 24) -> int:
         """
-        Sync new messages from Go bridge database
+        Sync messages using lookback window instead of MAX(timestamp).
+        Handles out-of-order message delivery correctly.
 
         Args:
             bridge_db_path: Path to Go bridge messages database
             monitored_jids: List of JIDs to monitor (only sync these chats)
             include_own_messages: If True, sync messages you sent to yourself (for testing/debug)
+            lookback_hours: Hours to look back for messages (default 24)
 
         Returns:
             Number of new messages synced
@@ -566,14 +762,10 @@ class Database:
         bridge_cursor = bridge_conn.cursor()
 
         try:
-            # Get last synced timestamp from our database
-            cursor = self.conn.cursor()
-            cursor.execute("SELECT MAX(timestamp) as last_sync FROM messages")
-            row = cursor.fetchone()
-            last_sync = row["last_sync"] if row and row["last_sync"] else datetime(2000, 1, 1)
+            # Use lookback window instead of MAX(timestamp)
+            lookback_threshold = datetime.now() - timedelta(hours=lookback_hours)
 
-            # Build query to get new messages from monitored chats
-            # For own messages (to yourself), we include them if include_own_messages=True
+            # Build query to get messages from monitored chats
             if monitored_jids:
                 placeholders = ",".join("?" * len(monitored_jids))
                 if include_own_messages:
@@ -595,7 +787,7 @@ class Database:
                         AND is_from_me = 0
                         ORDER BY timestamp ASC
                     """
-                params = [last_sync] + monitored_jids
+                params = [lookback_threshold] + monitored_jids
             else:
                 if include_own_messages:
                     query = """
@@ -612,16 +804,16 @@ class Database:
                         AND is_from_me = 0
                         ORDER BY timestamp ASC
                     """
-                params = [last_sync]
+                params = [lookback_threshold]
 
             bridge_cursor.execute(query, params)
-            new_messages = bridge_cursor.fetchall()
+            bridge_messages = bridge_cursor.fetchall()
 
             synced_count = 0
-            for msg in new_messages:
-                # Insert into our database (ignore duplicates)
+            for msg in bridge_messages:
+                # Insert into our database (INSERT OR IGNORE preserves state)
                 try:
-                    self.insert_message(
+                    inserted = self.insert_message(
                         msg_id=msg["id"],
                         chat_jid=msg["chat_jid"],
                         sender=msg["sender"],
@@ -629,7 +821,8 @@ class Database:
                         timestamp=msg["timestamp"],
                         is_from_me=msg["is_from_me"]
                     )
-                    synced_count += 1
+                    if inserted:
+                        synced_count += 1
                 except sqlite3.IntegrityError:
                     # Message already exists, skip
                     pass
