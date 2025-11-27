@@ -372,6 +372,109 @@ class Config:
             return max(0, int(entity.response_delay))
         return max(0, int(self.response_delay_default))
 
+    def save_to_file(self, file_path: str) -> bool:
+        """
+        Save configuration to JSON file with backup
+
+        Args:
+            file_path: Path to app.json file
+
+        Returns:
+            True if successful, raises exception otherwise
+        """
+        import shutil
+
+        # Backup existing file
+        backup_path = f"{file_path}.backup"
+        if os.path.exists(file_path):
+            shutil.copy2(file_path, backup_path)
+
+        try:
+            # Convert to dict
+            config_dict = {
+                "whatsapp": {
+                    "phone_number": self.whatsapp.phone_number
+                },
+                "self": {
+                    "active": self.self.active,
+                    "prompt": self.self.prompt,
+                    "persona": self.self.persona,
+                    "stale_session_seconds": self.self.stale_session_seconds,
+                    "debug": self.self.debug
+                },
+                "monitored_entities": [
+                    {
+                        "type": entity.type,
+                        "jid": entity.jid if entity.type == "group" else None,
+                        "phone": entity.phone if entity.type == "user" else None,
+                        "name": entity.name,
+                        "active": entity.active,
+                        "debug": entity.debug,
+                        "hey_bot": entity.hey_bot,
+                        "prompt": entity.prompt,
+                        "persona": entity.persona,
+                        "response_delay": entity.response_delay,
+                        "session_memory": {
+                            "reset_mode": entity.session_memory.reset_mode,
+                            "reset_minutes": entity.session_memory.reset_minutes,
+                            "reset_time": entity.session_memory.reset_time,
+                            "timezone": entity.session_memory.timezone
+                        }
+                    }
+                    for entity in self.monitored_entities
+                ],
+                "polling": {
+                    "interval_seconds": self.polling.interval_seconds,
+                    "max_concurrent_messages": self.polling.max_concurrent_messages,
+                    "processing_timeout_seconds": self.polling.processing_timeout_seconds,
+                    "max_retries": self.polling.max_retries,
+                    "lookback_hours": self.polling.lookback_hours
+                },
+                "rotation": {
+                    "messages_retention_days": self.rotation.messages_retention_days,
+                    "cleanup_interval_hours": self.rotation.cleanup_interval_hours
+                },
+                "session_memory": {
+                    "reset_mode": self.session_memory.reset_mode,
+                    "reset_time": self.session_memory.reset_time,
+                    "timezone": self.session_memory.timezone
+                },
+                "vitality": {
+                    "enabled": self.vitality.enabled,
+                    "time": self.vitality.time,
+                    "timezone": self.vitality.timezone,
+                    "message": self.vitality.message
+                },
+                "perplexity": {
+                    "model": self.perplexity.model,
+                    "temperature": self.perplexity.temperature,
+                    "max_tokens": self.perplexity.max_tokens
+                }
+            }
+
+            # Remove None values from monitored_entities
+            for entity_dict in config_dict["monitored_entities"]:
+                if entity_dict["jid"] is None:
+                    del entity_dict["jid"]
+                if entity_dict["phone"] is None:
+                    del entity_dict["phone"]
+
+            # Write to file
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(config_dict, f, indent=2, ensure_ascii=False)
+
+            # Validate JSON can be read back
+            with open(file_path, 'r') as f:
+                json.load(f)
+
+            return True
+
+        except Exception as e:
+            # Restore backup on error
+            if os.path.exists(backup_path):
+                shutil.copy2(backup_path, file_path)
+            raise e
+
 
 # Global config instance - loaded once at startup
 _config_instance = None

@@ -120,6 +120,18 @@ class Database:
             )
         """)
 
+        # Configuration sessions table (for interactive config mode)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS config_sessions (
+                chat_jid TEXT PRIMARY KEY,
+                current_step TEXT NOT NULL,
+                selected_entity_index INTEGER,
+                selected_option INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
         self.conn.commit()
 
         # Run schema migration if needed
