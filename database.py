@@ -211,8 +211,12 @@ class Database:
         cursor.execute("SELECT COUNT(*) FROM chat_sessions")
         session_count = cursor.fetchone()[0]
 
-        if pending_count > 0 or session_count > 0:
-            logger.info(f"Clearing {pending_count} pending message(s) and {session_count} session(s) from previous run...")
+        # Count existing config sessions
+        cursor.execute("SELECT COUNT(*) FROM config_sessions")
+        config_session_count = cursor.fetchone()[0]
+
+        if pending_count > 0 or session_count > 0 or config_session_count > 0:
+            logger.info(f"Clearing {pending_count} pending message(s), {session_count} chat session(s), and {config_session_count} config session(s) from previous run...")
 
             # Mark all pending/in-progress messages as completed
             if pending_count > 0:
@@ -228,8 +232,12 @@ class Database:
             if session_count > 0:
                 cursor.execute("DELETE FROM chat_sessions")
 
+            # Delete all config sessions to prevent stale config mode
+            if config_session_count > 0:
+                cursor.execute("DELETE FROM config_sessions")
+
             self.conn.commit()
-            logger.info(f"✅ Cleared {pending_count} pending message(s) and {session_count} session(s) - starting fresh")
+            logger.info(f"✅ Cleared {pending_count} pending message(s), {session_count} chat session(s), and {config_session_count} config session(s) - starting fresh")
 
     # ==========================================
     # MESSAGE OPERATIONS
