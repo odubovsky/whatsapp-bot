@@ -499,7 +499,7 @@ class MessageAgent:
                 if config_handler.is_config_trigger(content):
                     response = config_handler.handle_config_trigger(self.config)
                     config_handler.create_session(chat_jid, "list")
-                    await self.send_message(chat_jid, response)
+                    await self.whatsapp.send_message(chat_jid, response)
                     self.db.mark_completed(msg_id)
                     return
 
@@ -509,13 +509,13 @@ class MessageAgent:
                     # Check for exit command
                     if config_handler.is_exit_command(content):
                         config_handler.clear_session(chat_jid)
-                        await self.send_message(chat_jid, "Configuration mode exited.")
+                        await self.whatsapp.send_message(chat_jid, "Configuration mode exited.")
                         self.db.mark_completed(msg_id)
                         return
 
                     # Route to config handler
                     response = config_handler.handle_message(content, self.config, session)
-                    await self.send_message(chat_jid, response)
+                    await self.whatsapp.send_message(chat_jid, response)
                     self.db.mark_completed(msg_id)
 
                     # Reload config if it was updated
