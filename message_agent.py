@@ -329,7 +329,9 @@ class MessageAgent:
         """Append context summary to the system prompt."""
         if not context_text:
             return prompt
-        return f"{prompt}\n\nConversation context (most recent first):\n{context_text}"
+
+        sender_note = "\nNote: Messages include sender information in the format '[From: phone_number]' or '[Message from: phone_number]'. Use this to personalize responses and refer to specific people appropriately."
+        return f"{prompt}\n\nConversation context (most recent first):\n{context_text}{sender_note}"
 
     async def _maybe_wait_for_user_response(self, chat_jid: str, sender: str,
                                             message_time: datetime, delay_seconds: int) -> bool:
@@ -358,14 +360,24 @@ class MessageAgent:
 
     def _append_and_trim_context(self, context: List[Dict], user_message: str,
                                  assistant_message: str, user_time: datetime,
-                                 response_time: datetime, session_memory_config) -> List[Dict]:
+                                 response_time: datetime, session_memory_config,
+                                 sender: str = None) -> List[Dict]:
         """
         Add the latest user/assistant exchanges and re-apply trimming rules.
+
+        Args:
+            sender: Optional sender phone/JID to include in user message context
         """
         updated = list(context)
+
+        # Include sender information in user message if available
+        user_content = user_message
+        if sender:
+            user_content = f"[From: {sender}] {user_message}"
+
         updated.append({
             "role": "user",
-            "content": user_message,
+            "content": user_content,
             "timestamp": user_time.isoformat()
         })
         updated.append({
@@ -615,11 +627,12 @@ class MessageAgent:
                     logger.error(f"❌ Failed to send debug info for {msg_id}: {e}", exc_info=True)
                     # Continue processing even if debug send fails
 
-            # Query LLM with augmented prompt
+            # Query LLM with augmented prompt and sender info
             response = await self.query_llm(
                 prompt=augmented_prompt,
                 context=context,
-                message=content
+                message=content,
+                sender=sender
             )
 
             # Send response
@@ -635,7 +648,8 @@ class MessageAgent:
                 assistant_message=response,
                 user_time=event_time,
                 response_time=response_time,
-                session_memory_config=session_memory_config
+                session_memory_config=session_memory_config,
+                sender=sender
             )
             try:
                 self.db.update_session_context(
@@ -654,7 +668,7 @@ class MessageAgent:
             # Re-raise to let caller handle marking as failed
             raise
 
-    async def query_llm(self, prompt: str, context: List[Dict], message: str) -> str:
+    async def query_llm(self, prompt: str, context: List[Dict], message: str, sender: str = None) -> str:
         """
         Query Perplexity API with message and context
 
@@ -662,6 +676,7 @@ class MessageAgent:
             message: User's message
             context: Previous conversation context (user/assistant turns)
             prompt: System prompt (already augmented with context summary)
+            sender: Sender's phone number/JID (for context)
 
         Returns:
             AI response text
@@ -676,8 +691,15 @@ class MessageAgent:
                 logger.error("Cannot send empty message to LLM")
                 return "Please provide a message with content after the wake word."
 
+            # Format user message with sender information for better context
+            if sender:
+                # Include sender phone/JID in the message for LLM context
+                user_message_with_context = f"[Message from: {sender}]\n{message}"
+            else:
+                user_message_with_context = message
+
             # Add the current user message
-            messages.append({"role": "user", "content": message})
+            messages.append({"role": "user", "content": user_message_with_context})
 
             logger.info(f"Querying Perplexity with {len(messages)} messages (context in system prompt: {len(context)} entries)")
             logger.debug(f"System prompt: {prompt[:200]}...")
