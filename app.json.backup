@@ -1,0 +1,126 @@
+{
+  "whatsapp": {
+    "phone_number": "972504078989"
+  },
+  "self": {
+    "active": true,
+    "prompt": "Be informative and address my question or comment",
+    "persona": "friendly, concise and helpful",
+    "stale_session_seconds": 60,
+    "debug": true
+  },
+  "monitored_entities": [
+    {
+      "type": "group",
+      "jid": "120363421985146137@g.us",
+      "name": "מחקר חברות",
+      "active": true,
+      "debug": false,
+      "hey_bot": true,
+      "prompt": "/Users/odedd/coding/whatsapp-bot/prompts/companyResearch.prompt",
+      "persona": "friendly, concise and helpful",
+      "response_delay": 0,
+      "session_memory": {
+        "reset_mode": "duration",
+        "reset_minutes": 15,
+        "reset_time": null,
+        "timezone": "UTC"
+      }
+    },
+    {
+      "type": "group",
+      "jid": "120363423778930459@g.us",
+      "name": "אבאבוט",
+      "active": true,
+      "debug": false,
+      "hey_bot": true,
+      "prompt": "/Users/odedd/coding/whatsapp-bot/prompts/ababot.prompt",
+      "persona": "loving, carrying, empathic",
+      "response_delay": 0,
+      "session_memory": {
+        "reset_mode": "duration",
+        "reset_minutes": 15,
+        "reset_time": null,
+        "timezone": "UTC"
+      }
+    },
+    {
+      "type": "group",
+      "jid": "120363404376160587@g.us",
+      "name": "דלתא גליל",
+      "active": true,
+      "debug": false,
+      "hey_bot": true,
+      "prompt": "/Users/odedd/coding/whatsapp-bot/prompts/companyResearch.prompt",
+      "persona": "friendly, concise and helpful",
+      "response_delay": 0,
+      "session_memory": {
+        "reset_mode": "duration",
+        "reset_minutes": 15,
+        "reset_time": null,
+        "timezone": "UTC"
+      }
+    },
+    {
+      "type": "user",
+      "phone": "+972584078990",
+      "name": "לירון",
+      "active": false,
+      "debug": false,
+      "hey_bot": false,
+      "prompt": "You are a carrying father who cares about his daughter. Ask her question about her day at school, give her father advices and best practices on how to deal with stuff. Always communicate in Hebrew. Don't write more than 2-3 sentences so it won't be too long.",
+      "persona": "loving, friendly, carrying",
+      "response_delay": 10,
+      "session_memory": {
+        "reset_mode": "duration",
+        "reset_minutes": 15,
+        "reset_time": null,
+        "timezone": "UTC"
+      }
+    },
+    {
+      "type": "user",
+      "phone": "+972584078988",
+      "name": "יונתן",
+      "active": false,
+      "debug": false,
+      "hey_bot": false,
+      "prompt": "You are a carrying father who cares about his son. Ask him question about his day at school, give him father advices and best practices on how to deal with stuff. Always communicate in Hebrew. Don't write more than 2-3 sentences so it won't be too long.",
+      "persona": "loving, friendly, carrying, accomidating, understanding",
+      "response_delay": 5,
+      "session_memory": {
+        "reset_mode": "duration",
+        "reset_minutes": 15,
+        "reset_time": null,
+        "timezone": "UTC"
+      }
+    }
+  ],
+  "polling": {
+    "interval_seconds": 3,
+    "max_concurrent_messages": 10,
+    "processing_timeout_seconds": 300,
+    "max_retries": 3,
+    "lookback_hours": 24
+  },
+  "rotation": {
+    "messages_retention_days": 7,
+    "cleanup_interval_hours": 24
+  },
+  "session_memory": {
+    "reset_mode": "time",
+    "reset_time": "02:00",
+    "timezone": "UTC"
+  },
+  "vitality": {
+    "enabled": true,
+    "time": "09:00",
+    "timezone": "UTC",
+    "message": "🤖 WhatsApp Bot vitality check - All systems operational"
+  },
+  "perplexity": {
+    "model": "sonar-pro",
+    "temperature": 0.7,
+    "max_tokens": 4000
+  }
+}
