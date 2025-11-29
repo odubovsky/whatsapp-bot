@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from typing import Callable, Optional
 
-from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi import FastAPI, Header, HTTPException, Query, Request
 
 from .client import verify_signature, WhatsAppCloudClient
 from .config import WhatsAppConfig
@@ -21,9 +21,13 @@ def create_app(
     app = FastAPI(title="WhatsApp Cloud API Bridge", version="0.1.0")
 
     @app.get("/webhook")
-    async def verify(mode: str, challenge: str, token: str):
-        if mode == "subscribe" and config.verify_token and token == config.verify_token:
-            return int(challenge)
+    async def verify(
+        hub_mode: str = Query(alias="hub.mode"),
+        hub_challenge: str = Query(alias="hub.challenge"),
+        hub_verify_token: str = Query(alias="hub.verify_token"),
+    ):
+        if hub_mode == "subscribe" and config.verify_token and hub_verify_token == config.verify_token:
+            return int(hub_challenge)
         raise HTTPException(status_code=403, detail="Verification failed")
 
     @app.post("/webhook")
