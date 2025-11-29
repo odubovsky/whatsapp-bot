@@ -49,6 +49,9 @@ def create_app(
         # Parse and print incoming messages to STDOUT
         _parse_and_print_messages(payload)
 
+        # Send auto-reply for testing
+        _send_auto_reply(payload, client)
+
         if on_message:
             on_message(payload)
 
@@ -108,3 +111,28 @@ def _parse_and_print_messages(payload: dict) -> None:
                 print(f"{'='*60}\n")
 
                 logger.info(f"Received message from {chat_jid}: {content[:50]}...")
+
+
+def _send_auto_reply(payload: dict, client: WhatsAppCloudClient) -> None:
+    """Send automatic reply to incoming messages (for testing)."""
+    for entry in payload.get("entry", []):
+        for change in entry.get("changes", []):
+            value = change.get("value", {})
+            messages = value.get("messages", [])
+
+            for msg in messages:
+                from_phone = msg.get("from", "")
+                msg_type = msg.get("type", "")
+
+                # Only auto-reply to text messages
+                if msg_type == "text":
+                    try:
+                        response = client.send_text(
+                            to=from_phone,
+                            text="Pong! Message received via WhatsApp Cloud API Bridge"
+                        )
+                        print(f"✅ Auto-reply sent to {from_phone}")
+                        logger.info(f"Auto-reply sent to {from_phone}: {response.status_code}")
+                    except Exception as e:
+                        print(f"❌ Failed to send auto-reply to {from_phone}: {e}")
+                        logger.error(f"Auto-reply failed for {from_phone}: {e}")
