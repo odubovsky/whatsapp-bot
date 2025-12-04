@@ -140,7 +140,7 @@ if [ "$NO_TEMPLATES" = false ]; then
 fi
 
 # Set permissions
-chmod +x run-bot.sh 2>/dev/null || true
+chmod +x run-bot.sh run-bridge.sh 2>/dev/null || true
 
 echo ""
 echo -e "${GREEN}✅ Setup complete!${NC}"
