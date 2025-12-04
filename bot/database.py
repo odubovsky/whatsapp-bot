@@ -7,6 +7,7 @@ session memory, configurable rotation cleanup, and WhatsApp device session.
 
 import sqlite3
 import json
+import os
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 from contextlib import contextmanager
@@ -16,7 +17,11 @@ import pytz
 class Database:
     """SQLite database manager with rotation and session handling"""
 
-    def __init__(self, db_path: str = "store/whatsapp_bot.db"):
+    def __init__(self, db_path: str = None):
+        if db_path is None:
+            # Default to store/ in project root
+            project_root = os.path.dirname(os.path.dirname(__file__))
+            db_path = os.path.join(project_root, "store", "whatsapp_bot.db")
         """Initialize database connection"""
         self.db_path = db_path
         self.conn = None
@@ -754,7 +759,7 @@ class Database:
             "database_size_mb": round(db_size / 1024 / 1024, 2)
         }
 
-    def sync_from_go_bridge(self, bridge_db_path: str = "whatsapp-bridge/store/messages.db",
+    def sync_from_go_bridge(self, bridge_db_path: str = None,
                             monitored_jids: List[str] = None,
                             include_own_messages: bool = True,
                             lookback_hours: int = 24) -> int:
@@ -763,7 +768,7 @@ class Database:
         Handles out-of-order message delivery correctly.
 
         Args:
-            bridge_db_path: Path to Go bridge messages database
+            bridge_db_path: Path to Go bridge messages database (default: whatsapp-bridge/store/messages.db)
             monitored_jids: List of JIDs to monitor (only sync these chats)
             include_own_messages: If True, sync messages you sent to yourself (for testing/debug)
             lookback_hours: Hours to look back for messages (default 24)
@@ -772,6 +777,11 @@ class Database:
             Number of new messages synced
         """
         import os
+
+        # Default bridge database path
+        if bridge_db_path is None:
+            project_root = os.path.dirname(os.path.dirname(__file__))
+            bridge_db_path = os.path.join(project_root, "whatsapp-bridge", "store", "messages.db")
 
         if not os.path.exists(bridge_db_path):
             return 0

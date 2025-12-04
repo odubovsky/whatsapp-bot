@@ -224,7 +224,7 @@ class PerplexityConfig:
 class Config:
     """Main configuration class - singleton pattern"""
 
-    def __init__(self, config_file: str = "app.json", env_file: str = ".env"):
+    def __init__(self, config_file: str = None, env_file: str = ".env"):
         # Load from .env
         if env_file != ".env":
             load_dotenv(env_file, override=True)
@@ -232,7 +232,20 @@ class Config:
 
         self.perplexity_api_key = os.getenv("PERPLEXITY_API_KEY")
         self.log_level = os.getenv("LOG_LEVEL", "INFO")
-        self.database_path = os.getenv("DATABASE_PATH", "store/whatsapp_bot.db")
+        # Database path relative to project root
+        default_db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "store", "whatsapp_bot.db")
+        self.database_path = os.getenv("DATABASE_PATH", default_db_path)
+        
+        # Default config file path (relative to bot/ directory)
+        if config_file is None:
+            bot_dir = os.path.dirname(__file__)
+            config_file = os.path.join(bot_dir, "app.json")
+        # If config_file is relative and doesn't exist, try relative to bot/ directory
+        elif not os.path.isabs(config_file) and not os.path.exists(config_file):
+            bot_dir = os.path.dirname(__file__)
+            bot_config_path = os.path.join(bot_dir, config_file)
+            if os.path.exists(bot_config_path):
+                config_file = bot_config_path
 
         # Validate required env vars
         if not self.perplexity_api_key:
@@ -480,7 +493,7 @@ class Config:
 _config_instance = None
 
 
-def get_config(config_file: str = "app.json", env_file: str = ".env") -> Config:
+def get_config(config_file: str = None, env_file: str = ".env") -> Config:
     """Get or create config singleton"""
     global _config_instance
     if _config_instance is None:
@@ -488,7 +501,7 @@ def get_config(config_file: str = "app.json", env_file: str = ".env") -> Config:
     return _config_instance
 
 
-def reload_config(config_file: str = "app.json", env_file: str = ".env") -> Config:
+def reload_config(config_file: str = None, env_file: str = ".env") -> Config:
     """Force reload config (useful for testing or live updates)"""
     global _config_instance
     _config_instance = Config(config_file, env_file)

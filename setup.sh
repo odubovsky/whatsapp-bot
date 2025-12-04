@@ -124,7 +124,7 @@ if [ "$SKIP_VENV" = false ]; then
     # Install dependencies
     echo ""
     echo -e "${YELLOW}📥 Installing dependencies...${NC}"
-    pip install -r requirements.txt
+    pip install -r bot/requirements.txt
     echo -e "${GREEN}✅ Dependencies installed${NC}"
 else
     echo -e "${YELLOW}⚠️  Skipping virtual environment creation${NC}"
@@ -148,11 +148,11 @@ if [ "$NO_TEMPLATES" = false ]; then
         echo -e "${GREEN}✅ .env already exists (skipping)${NC}"
     fi
 
-    if [ ! -f app.json ]; then
+    if [ ! -f bot/app.json ]; then
         echo -e "${YELLOW}📝 Creating app.json from template...${NC}"
-        cp app.json.example app.json
+        cp bot/app.json.example bot/app.json
         echo -e "${GREEN}✅ app.json created${NC}"
-        echo -e "${YELLOW}⚠️  IMPORTANT: Edit app.json with your WhatsApp groups/users!${NC}"
+        echo -e "${YELLOW}⚠️  IMPORTANT: Edit bot/app.json with your WhatsApp groups/users!${NC}"
     else
         echo -e "${GREEN}✅ app.json already exists (skipping)${NC}"
     fi

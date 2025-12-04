@@ -22,8 +22,8 @@ if not hasattr(sys, 'real_prefix') and not (hasattr(sys, 'base_prefix') and sys.
     print("  source venv/bin/activate && python test_perplexity.py")
     sys.exit(1)
 
-from config import get_config
-from message_agent import PerplexityClient
+from bot.config import get_config
+from bot.message_agent import PerplexityClient
 
 
 async def test_perplexity():

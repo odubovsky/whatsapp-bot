@@ -19,4 +19,4 @@ export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 mkdir -p logs
 
 # Run with logging (stdout + file)
-exec python3 main.py "$@" 2>&1 | tee -a logs/whatsapp-bot.log
+exec python3 bot/main.py "$@" 2>&1 | tee -a logs/whatsapp-bot.log
