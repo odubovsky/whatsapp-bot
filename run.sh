@@ -16,7 +16,7 @@ fi
 export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 
 # Create logs directory
-mkdir -p logs
+mkdir -p bot/logs
 
 # Run with logging (stdout + file)
-exec python3 bot/main.py "$@" 2>&1 | tee -a logs/whatsapp-bot.log
+exec python3 bot/main.py "$@" 2>&1 | tee -a bot/logs/whatsapp-bot.log
