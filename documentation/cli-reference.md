@@ -746,20 +746,22 @@ python main.py --dry-run
 ### Production Deployment
 
 ```bash
-# Install as systemd service
-sudo cp systemd/whatsapp-bot.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable whatsapp-bot
-sudo systemctl start whatsapp-bot
+# Run in background using nohup
+nohup ./run.sh > bot/logs/service.log 2>&1 &
 
-# Check status
-sudo systemctl status whatsapp-bot
+# Or use screen for interactive management
+screen -S whatsapp-bot
+./run.sh
+# Press Ctrl+A then D to detach
+
+# To reattach later
+screen -r whatsapp-bot
+
+# Check if running
+ps aux | grep whatsapp-bot
 
 # View logs
-sudo journalctl -u whatsapp-bot -f
-
-# Restart
-sudo systemctl restart whatsapp-bot
+tail -f bot/logs/whatsapp-bot.log
 ```
 
 ---

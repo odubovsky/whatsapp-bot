@@ -12,7 +12,7 @@ An AI-powered WhatsApp bot that monitors specific groups/users and responds usin
 - ✅ Daily vitality health checks
 - ✅ Startup validation messages
 - ✅ Perplexity API integration
-- ✅ Cloud deployment ready (systemd service)
+- ✅ Cloud deployment ready
 
 ## Quick Start
 
@@ -53,7 +53,7 @@ Edit `app.json`:
 
 ```bash
 # First time: Scan QR code
-python main.py --qr-only
+python3 bot/main.py --qr-only
 
 # After scanning, start service
 ./run.sh
@@ -91,39 +91,37 @@ See [.claude/configuration.md](.claude/configuration.md) for complete reference.
 ./run.sh
 
 # Show QR code only
-python main.py --qr-only
+python3 bot/main.py --qr-only
 
 # Reset WhatsApp session
-python main.py --reset-session
+python3 bot/main.py --reset-session
 
 # Show database stats
-python main.py --show-stats
+python3 bot/main.py --show-stats
 
 # Validate configuration
-python main.py --validate-config
+python3 bot/main.py --validate-config
 
 # Debug mode
-python main.py --log-level DEBUG
+python3 bot/main.py --log-level DEBUG
 
 # Dry run (test without connecting)
-python main.py --dry-run
+python3 bot/main.py --dry-run
 ```
 
 ### Production Deployment
 
 ```bash
-# Install as systemd service
-sudo cp systemd/whatsapp-bot.service /etc/systemd/system/
-sudo nano /etc/systemd/system/whatsapp-bot.service  # Edit paths
-sudo systemctl daemon-reload
-sudo systemctl enable whatsapp-bot
-sudo systemctl start whatsapp-bot
+# Run in background using nohup or screen/tmux
+nohup ./run.sh > bot/logs/service.log 2>&1 &
 
-# Check status
-sudo systemctl status whatsapp-bot
+# Or use screen for interactive management
+screen -S whatsapp-bot
+./run.sh
+# Press Ctrl+A then D to detach
 
-# View logs
-sudo journalctl -u whatsapp-bot -f
+# To reattach later
+screen -r whatsapp-bot
 ```
 
 ## Project Structure
@@ -140,7 +138,6 @@ whatsapp-bot/
 ├── vitality_checker.py       # Health checks
 ├── setup.sh                  # Automated setup
 ├── run.sh                    # Service runner
-├── systemd/                  # Service files
 └── store/                    # Database storage
 ```
 
@@ -253,25 +250,25 @@ sudo apt install qrencode  # Linux
 brew install qrencode      # macOS
 
 # Try QR-only mode
-python main.py --qr-only
+python3 bot/main.py --qr-only
 ```
 
 ### Messages Not Being Processed
 ```bash
 # Check database
-python main.py --show-stats
+python3 bot/main.py --show-stats
 
 # Enable debug logging
-python main.py --log-level DEBUG
+python3 bot/main.py --log-level DEBUG
 
 # Verify configuration
-python main.py --validate-config
+python3 bot/main.py --validate-config
 ```
 
 ### Session Expired
 ```bash
 # Reset and re-authenticate
-python main.py --reset-session
+python3 bot/main.py --reset-session
 ```
 
 ### Database Growing Too Large
@@ -288,43 +285,39 @@ python main.py --reset-session
 ### Requirements
 
 - Python 3.9+
-- Linux/macOS (systemd for production)
+- Linux/macOS
 - Perplexity API key
 
 ### Setup Development Environment
 
 ```bash
-# Create venv
-python3 -m venv venv
-source venv/bin/activate
-
 # Install dependencies
-pip install -r requirements.txt
+pip3 install --user -r bot/requirements.txt
 
 # Copy config templates
 cp .env.example .env
-cp app.json.example app.json
+cp bot/app.json.example bot/app.json
 
 # Edit configs
 nano .env
-nano app.json
+nano bot/app.json
 
 # Run tests
-python config.py
-python database.py
+python3 bot/config.py
+python3 bot/database.py
 ```
 
 ### Testing
 
 ```bash
 # Validate configuration
-python main.py --validate-config
+python3 bot/main.py --validate-config
 
 # Test without connecting
-python main.py --dry-run
+python3 bot/main.py --dry-run
 
 # Send test message
-python main.py --send-test "Hello from bot!"
+python3 bot/main.py --send-test "Hello from bot!"
 ```
 
 ## Contributing
@@ -357,8 +350,8 @@ MIT License - See LICENSE file for details
 
 For issues, questions, or suggestions:
 - Check documentation in `.claude/` directory
-- Review logs: `tail -f logs/whatsapp-bot.log`
-- Enable debug mode: `python main.py --log-level DEBUG`
+- Review logs: `tail -f bot/logs/whatsapp-bot.log`
+- Enable debug mode: `python3 bot/main.py --log-level DEBUG`
 
 ## Acknowledgments
 
