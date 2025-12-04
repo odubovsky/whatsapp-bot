@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sqlite3:*)",
+      "Bash(chmod:*)",
+      "Bash(./setup.sh)",
+      "Bash(source:*)",
+      "Bash(curl:*)",
+      "Bash(python main.py:*)",
+      "Bash(lsof:*)",
+      "Bash(./whatsapp-client)",
+      "Bash(kill:*)",
+      "Bash(python:*)",
+      "Bash(echo:*)",
+      "Bash(timeout 10 python:*)",
+      "Bash(cat:*)",
+      "Bash(python3:*)",
+      "Bash(timeout 15 python:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(for pid in 18936 22214 14875 10209 9508 87184 74346 62446 44970 38680 32364 32358 28983 28973 26308 26299 26172 18419 18394 17886 24414)",
+      "Bash(do kill $pid)",
+      "Bash(done)",
+      "Bash(tree:*)",
+      "Bash(brew install:*)",
+      "Bash(ngrok http:*)",
+      "Bash(npm install:*)",
+      "Bash(lt:*)",
+      "Bash(xargs kill:*)",
+      "Bash(/Users/odedd/coding/whatsapp-bot/venv/bin/python:*)",
+      "Bash(/Users/odedd/coding/whatsapp-bot/venv/bin/pip install:*)",
+      "Bash(xargs:*)",
+      "Bash(pkill:*)",
+      "Bash(ps:*)",
+      "Bash(git remote:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

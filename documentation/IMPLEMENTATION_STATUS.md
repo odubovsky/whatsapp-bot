@@ -3,11 +3,11 @@
 ## ✅ Completed Components
 
 ### Phase 1: Project Setup
-- ✅ Directory structure (store/, logs/, systemd/, .claude/)
+- ✅ Directory structure (store/, bot/logs/, documentation/)
 - ✅ Configuration templates (.env.example, app.json.example)
 - ✅ requirements.txt with all dependencies
 - ✅ setup.sh (automated environment setup)
-- ✅ run.sh (service runner)
+- ✅ run-bot.sh (bot runner)
 - ✅ .gitignore (security and cleanup)
 
 ### Phase 2: Core Infrastructure
@@ -59,9 +59,8 @@
   - Comprehensive logging
 
 ### Phase 4: Deployment
-- ✅ systemd service file
 - ✅ README.md with quickstart and documentation
-- ✅ Comprehensive documentation in .claude/ directory
+- ✅ Comprehensive documentation in documentation/ directory
 
 ## ⚠️ Partial / Stub Components
 
@@ -128,7 +127,7 @@ These can be added later as they're convenience tools, not core functionality.
    - Run setup.sh
    - Configure .env and app.json
    - Authenticate WhatsApp
-   - Install systemd service
+   - Run as background process
    - Monitor logs
 
 ### Optional (Nice to Have)
@@ -155,7 +154,7 @@ These can be added later as they're convenience tools, not core functionality.
 ✅ Main orchestration (async tasks, shutdown)
 ✅ CLI interface (all options)
 ✅ Logging system
-✅ Deployment setup (systemd)
+✅ Deployment setup
 
 ### What Needs Integration
 
@@ -195,7 +194,7 @@ python main.py --dry-run
 python main.py --qr-only
 
 # Normal run
-./run.sh
+./run-bot.sh
 ```
 
 ## 🐛 Known Issues / Limitations

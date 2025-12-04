@@ -538,31 +538,29 @@ async def main():
 │         Linux VPS (Cloud)           │
 ├─────────────────────────────────────┤
 │                                     │
-│  systemd                            │
+│  Background Process                 │
 │    ↓                                │
-│  whatsapp-bot.service               │
+│  /opt/whatsapp-bot/run-bot.sh     │
 │    ↓                                │
-│  /opt/whatsapp-bot/run.sh          │
-│    ↓                                │
-│  venv/bin/python main.py            │
+│  python3 bot/main.py                │
 │                                     │
 │  Persistent Storage:                │
 │  • store/whatsapp_bot.db           │
-│  • logs/whatsapp-bot.log           │
+│  • bot/logs/whatsapp-bot.log       │
 │  • .env (secrets)                  │
-│  • app.json (config)               │
+│  • app.json (config)                │
 │                                     │
 └─────────────────────────────────────┘
 ```
 
 ### Process Management
-- Systemd for service management
-- Auto-restart on failure
-- Logs to systemd journal + file
+- Run via nohup, screen, or tmux
+- Manual process management
+- Logs to file
 - Graceful shutdown on stop
 
 ### Monitoring
 - Log file rotation
 - Database statistics endpoint
 - Health check via vitality messages
-- Process status via systemd
+- Process status via ps or screen/tmux

@@ -5,7 +5,7 @@ Test configuration handler basic functionality
 
 def test_trigger_detection():
     """Test trigger word detection"""
-    from config_handler import ConfigurationHandler
+    from bot.config_handler import ConfigurationHandler
 
     print("Testing trigger detection...")
     assert ConfigurationHandler.is_config_trigger('bot config') == True
@@ -20,7 +20,7 @@ def test_trigger_detection():
 
 def test_exit_detection():
     """Test exit command detection"""
-    from config_handler import ConfigurationHandler
+    from bot.config_handler import ConfigurationHandler
 
     print("Testing exit detection...")
     assert ConfigurationHandler.is_exit_command('0') == True

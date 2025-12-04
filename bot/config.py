@@ -25,7 +25,6 @@ class SelfConfig:
     """Configuration for messages sent to yourself (for testing/debugging)"""
     active: bool = False
     prompt: str = "You are a helpful assistant."
-    persona: str = "helpful and concise"
     stale_session_seconds: int = 60
     debug: bool = True
     prompt_is_file: bool = False
@@ -140,7 +139,6 @@ class MonitoredEntity:
     type: Literal["user", "group"]
     name: str
     prompt: str
-    persona: str
     active: bool = True  # Whether to monitor this entity
     debug: bool = False  # Send debug info before LLM call
     jid: Optional[str] = None  # For groups
@@ -224,7 +222,7 @@ class PerplexityConfig:
 class Config:
     """Main configuration class - singleton pattern"""
 
-    def __init__(self, config_file: str = "app.json", env_file: str = ".env"):
+    def __init__(self, config_file: str = None, env_file: str = ".env"):
         # Load from .env
         if env_file != ".env":
             load_dotenv(env_file, override=True)
@@ -232,7 +230,20 @@ class Config:
 
         self.perplexity_api_key = os.getenv("PERPLEXITY_API_KEY")
         self.log_level = os.getenv("LOG_LEVEL", "INFO")
-        self.database_path = os.getenv("DATABASE_PATH", "store/whatsapp_bot.db")
+        # Database path relative to project root
+        default_db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "store", "whatsapp_bot.db")
+        self.database_path = os.getenv("DATABASE_PATH", default_db_path)
+        
+        # Default config file path (relative to project root)
+        if config_file is None:
+            project_root = os.path.dirname(os.path.dirname(__file__))
+            config_file = os.path.join(project_root, "app.json")
+        # If config_file is relative and doesn't exist, try relative to project root
+        elif not os.path.isabs(config_file) and not os.path.exists(config_file):
+            project_root = os.path.dirname(os.path.dirname(__file__))
+            root_config_path = os.path.join(project_root, config_file)
+            if os.path.exists(root_config_path):
+                config_file = root_config_path
 
         # Validate required env vars
         if not self.perplexity_api_key:
@@ -266,7 +277,9 @@ class Config:
             raise ValueError("response_delay must be >= 0")
 
         # Parse self configuration (messages to yourself)
-        self.self = SelfConfig(**data.get("self", {}))
+        self_data = dict(data.get("self", {}))
+        self_data.pop("persona", None)  # Remove persona if present (deprecated)
+        self.self = SelfConfig(**self_data)
         self.self.validate()
 
         # Parse monitored entities
@@ -279,6 +292,7 @@ class Config:
             # Allow per-entity session_memory override
             entity_payload = dict(entity_data)
             entity_session_memory = entity_payload.pop("session_memory", None)
+            entity_payload.pop("persona", None)  # Remove persona if present (deprecated)
 
             entity = MonitoredEntity(**entity_payload)
             entity.validate()
@@ -353,11 +367,6 @@ class Config:
         entity = self.get_entity_by_jid(jid)
         return entity.prompt if entity else None
 
-    def get_persona_for_entity(self, jid: str) -> Optional[str]:
-        """Get persona for specific entity"""
-        entity = self.get_entity_by_jid(jid)
-        return entity.persona if entity else None
-
     def get_session_memory_for_entity(self, jid: str) -> SessionMemoryConfig:
         """Get session memory config, falling back to the global default."""
         entity = self.get_entity_by_jid(jid)
@@ -398,7 +407,6 @@ class Config:
                 "self": {
                     "active": self.self.active,
                     "prompt": self.self.prompt,
-                    "persona": self.self.persona,
                     "stale_session_seconds": self.self.stale_session_seconds,
                     "debug": self.self.debug
                 },
@@ -412,7 +420,6 @@ class Config:
                         "debug": entity.debug,
                         "hey_bot": entity.hey_bot,
                         "prompt": entity.prompt,
-                        "persona": entity.persona,
                         "response_delay": entity.response_delay,
                         "session_memory": {
                             "reset_mode": entity.session_memory.reset_mode,
@@ -480,7 +487,7 @@ class Config:
 _config_instance = None
 
 
-def get_config(config_file: str = "app.json", env_file: str = ".env") -> Config:
+def get_config(config_file: str = None, env_file: str = ".env") -> Config:
     """Get or create config singleton"""
     global _config_instance
     if _config_instance is None:
@@ -488,7 +495,7 @@ def get_config(config_file: str = "app.json", env_file: str = ".env") -> Config:
     return _config_instance
 
 
-def reload_config(config_file: str = "app.json", env_file: str = ".env") -> Config:
+def reload_config(config_file: str = None, env_file: str = ".env") -> Config:
     """Force reload config (useful for testing or live updates)"""
     global _config_instance
     _config_instance = Config(config_file, env_file)

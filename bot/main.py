@@ -11,16 +11,17 @@ import argparse
 import signal
 import logging
 import sys
+import os
 from datetime import timedelta
 import hashlib
 from pathlib import Path
 from colorlog import ColoredFormatter
 
-from config import get_config, reload_config
-from database import Database
-from whatsapp_client import WhatsAppClient
-from message_agent import MessageAgent
-from vitality_checker import VitalityChecker
+from bot.config import get_config, reload_config
+from bot.database import Database
+from bot.whatsapp_client import WhatsAppClient
+from bot.message_agent import MessageAgent
+from bot.vitality_checker import VitalityChecker
 
 # Global state for graceful shutdown
 shutdown_event = asyncio.Event()
@@ -236,7 +237,7 @@ def show_stats_and_exit(args):
     """Display database statistics and exit"""
     logger = logging.getLogger(__name__)
     try:
-        db_path = args.db_path or "store/whatsapp_bot.db"
+        db_path = args.db_path or os.path.join(os.path.dirname(os.path.dirname(__file__)), "store", "whatsapp_bot.db")
         db = Database(db_path)
         stats = db.get_stats()
 

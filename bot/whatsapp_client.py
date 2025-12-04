@@ -7,6 +7,7 @@ The Go bridge handles the actual WhatsApp connection using whatsmeow.
 
 import asyncio
 import logging
+import os
 import subprocess
 import time
 import httpx
@@ -57,7 +58,9 @@ class WhatsAppClient:
         """Start the Go bridge process"""
         import os
 
-        bridge_dir = "/Users/odedd/coding/whatsapp-bot/whatsapp-bridge"
+        # Bridge directory relative to project root
+        project_root = os.path.dirname(os.path.dirname(__file__))
+        bridge_dir = os.path.join(project_root, "whatsapp-bridge")
         bridge_binary = os.path.join(bridge_dir, "whatsapp-client")
 
         # Build command
@@ -100,7 +103,7 @@ class WhatsAppClient:
                     raise RuntimeError(
                         f"Go bridge not reachable at {self.bridge_url} after {timeout}s. "
                         "Please start the Go bridge first:\n"
-                        "  cd whatsapp-bridge && ./whatsapp-client"
+                        f"  cd {os.path.join(os.path.dirname(os.path.dirname(__file__)), 'whatsapp-bridge')} && ./whatsapp-client"
                     )
                 await asyncio.sleep(1)
 

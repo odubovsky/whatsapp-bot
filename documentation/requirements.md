@@ -83,12 +83,11 @@
   - Dry-run mode
 
 ### FR10: Deployment Support
-- **FR10.1**: Automated setup script (virtual environment)
+- **FR10.1**: Automated setup script
 - **FR10.2**: Service runner script
-- **FR10.3**: Systemd service file
-- **FR10.4**: Cloud deployment documentation
-- **FR10.5**: Persistent storage handling
-- **FR10.6**: Log file management
+- **FR10.3**: Cloud deployment documentation
+- **FR10.4**: Persistent storage handling
+- **FR10.5**: Log file management
 
 ## Non-Functional Requirements
 
@@ -133,7 +132,7 @@
 
 ### NFR7: Portability
 - **NFR7.1**: Python 3.9+ compatibility
-- **NFR7.2**: Linux environment (systemd)
+- **NFR7.2**: Linux/macOS environment
 - **NFR7.3**: Cloud VPS deployment ready
 - **NFR7.4**: No Docker dependency
 
@@ -198,7 +197,7 @@ DATABASE_PATH=string (default: store/whatsapp_bot.db)
 2. Runs `./setup.sh`
 3. Edits `.env` with API key
 4. Edits `app.json` with groups/users
-5. Runs `./run.sh`
+5. Runs `./run-bot.sh`
 6. Scans QR code in terminal
 7. Receives startup validation message
 8. Bot begins monitoring
@@ -241,7 +240,7 @@ DATABASE_PATH=string (default: store/whatsapp_bot.db)
 2. Clones repository
 3. Runs `./setup.sh`
 4. Configures `.env` and `app.json`
-5. Installs systemd service
+5. Runs as background process
 6. Enables and starts service
 7. SSH to VPS, scans QR code (first time only)
 8. Service runs automatically on reboot
@@ -266,7 +265,7 @@ DATABASE_PATH=string (default: store/whatsapp_bot.db)
 
 ### C1: Technical Constraints
 - Python 3.9+ required
-- Linux environment for systemd
+- Linux/macOS environment
 - Internet connectivity required
 - WhatsApp account required
 
@@ -284,7 +283,7 @@ DATABASE_PATH=string (default: store/whatsapp_bot.db)
 ## Assumptions
 
 ### A1: Environment
-- Linux VPS with systemd
+- Linux VPS
 - Python 3.9+ available
 - Internet connectivity stable
 - Sufficient disk space for database

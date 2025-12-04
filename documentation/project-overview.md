@@ -51,8 +51,8 @@ Build an AI-powered WhatsApp bot that monitors specific groups/users and respond
 
 ### 8. Deployment Considerations
 - Python-based implementation
-- Virtual environment setup via `setup.sh`
-- Cloud-ready (VPS/systemd service)
+- Dependencies installed via `setup.sh`
+- Cloud-ready (VPS deployment)
 - Persistent storage for database and sessions
 - No Docker (cloud VM deployment)
 
@@ -74,7 +74,7 @@ Build an AI-powered WhatsApp bot that monitors specific groups/users and respond
 
 ### System Requirements
 - Python 3.9+
-- Linux VPS (systemd for service management)
+- Linux VPS
 - Persistent storage for database
 
 ## Project Structure
@@ -87,7 +87,7 @@ whatsapp-bot/
 ├── app.json.example         # Template
 ├── requirements.txt         # Python dependencies
 ├── setup.sh                 # Automated environment setup
-├── run.sh                   # Service runner script
+├── run-bot.sh               # Bot runner script
 ├── README.md                # User documentation
 ├── .claude/                 # Project documentation
 │   ├── project-overview.md
@@ -96,9 +96,8 @@ whatsapp-bot/
 │   ├── configuration.md
 │   ├── database-design.md
 │   └── cli-reference.md
-├── systemd/
-│   └── whatsapp-bot.service # Linux service file
-├── main.py                  # Entry point + orchestration
+├── bot/                     # Python bot code
+│   ├── main.py              # Entry point + orchestration
 ├── config.py                # Configuration loader
 ├── whatsapp_client.py       # WhatsApp connection & events
 ├── database.py              # SQLite operations
@@ -140,7 +139,6 @@ whatsapp-bot/
 ### Phase 5: Deployment & Utilities
 - CLI help for all scripts
 - Utility scripts (db_manager, test_config, send_message)
-- Systemd service configuration
 - Cloud deployment documentation
 
 ## Key Design Decisions
@@ -160,7 +158,6 @@ All behavior configurable without code changes:
 - Health check schedules
 
 ### Cloud-Ready from Start
-- Systemd service integration
 - Persistent storage handling
 - Timezone-aware scheduling
 - Comprehensive logging

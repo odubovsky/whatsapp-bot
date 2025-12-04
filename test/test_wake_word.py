@@ -3,7 +3,7 @@
 Quick test for wake word detection functionality
 """
 
-from message_agent import MessageAgent
+from bot.message_agent import MessageAgent
 
 def test_wake_word_detection():
     """Test wake word detection"""

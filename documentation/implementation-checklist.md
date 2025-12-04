@@ -13,7 +13,7 @@ This checklist tracks the implementation progress for the WhatsApp bot project. 
 - [ ] Create `.claude/` directory with documentation
 - [ ] Create `store/` directory for database
 - [ ] Create `logs/` directory for log files
-- [ ] Create `systemd/` directory for service files
+- [ ] Create necessary directories
 
 ### Configuration Templates
 - [ ] Create `.env.example` template
@@ -24,7 +24,7 @@ This checklist tracks the implementation progress for the WhatsApp bot project. 
 ### Python Environment
 - [ ] Create `requirements.txt` with all dependencies
 - [ ] Create `setup.sh` script with CLI options
-- [ ] Create `run.sh` script
+- [ ] Create `run-bot.sh` script
 - [ ] Test virtual environment creation
 
 ---
@@ -200,15 +200,6 @@ This checklist tracks the implementation progress for the WhatsApp bot project. 
 
 ## Phase 8: Deployment ⬜
 
-### Systemd Service
-- [ ] Create `whatsapp-bot.service` file
-- [ ] Configure service user and paths
-- [ ] Configure restart policy
-- [ ] Configure logging
-- [ ] Test service installation
-- [ ] Test service start/stop/restart
-- [ ] Test auto-start on reboot
-
 ### Documentation
 - [ ] Write comprehensive README.md
 - [ ] Document installation steps
@@ -277,7 +268,7 @@ This checklist tracks the implementation progress for the WhatsApp bot project. 
 - [ ] Run setup.sh
 - [ ] Configure .env and app.json
 - [ ] Authenticate WhatsApp (QR code)
-- [ ] Install systemd service
+- [ ] Run as background process
 - [ ] Start service
 - [ ] Verify startup validation message
 - [ ] Monitor logs for errors

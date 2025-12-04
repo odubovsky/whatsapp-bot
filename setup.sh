@@ -1,6 +1,6 @@
 #!/bin/bash
 # WhatsApp Bot Setup Script
-# Automated environment setup with virtual environment creation
+# Automated environment setup
 
 set -e
 
@@ -12,7 +12,6 @@ NC='\033[0m' # No Color
 
 # Default values
 PYTHON_BIN="python3"
-SKIP_VENV=false
 NO_TEMPLATES=false
 INSTALL_SYSTEM=false
 
@@ -26,7 +25,6 @@ Usage: ./setup.sh [OPTIONS]
 Options:
   -h, --help              Show this help message
   --python PATH           Use specific Python binary (default: python3)
-  --skip-venv             Skip virtual environment creation
   --no-templates          Don't create config templates
   --install-system-deps   Install system dependencies (requires sudo)
 
@@ -48,10 +46,6 @@ while [[ $# -gt 0 ]]; do
         --python)
             PYTHON_BIN="$2"
             shift 2
-            ;;
-        --skip-venv)
-            SKIP_VENV=true
-            shift
             ;;
         --no-templates)
             NO_TEMPLATES=true
@@ -95,9 +89,9 @@ if [ "$INSTALL_SYSTEM" = true ]; then
 
     if command -v apt-get &> /dev/null; then
         sudo apt-get update
-        sudo apt-get install -y python3-venv python3-pip qrencode
+        sudo apt-get install -y python3-pip qrencode
     elif command -v yum &> /dev/null; then
-        sudo yum install -y python3-venv python3-pip qrencode
+        sudo yum install -y python3-pip qrencode
     elif command -v brew &> /dev/null; then
         brew install qrencode
     else
@@ -105,35 +99,34 @@ if [ "$INSTALL_SYSTEM" = true ]; then
     fi
 fi
 
-# Create virtual environment
-if [ "$SKIP_VENV" = false ]; then
-    echo ""
-    echo -e "${YELLOW}📦 Creating virtual environment...${NC}"
-    $PYTHON_BIN -m venv venv
-    echo -e "${GREEN}✅ Virtual environment created${NC}"
-
-    # Activate venv
-    source venv/bin/activate
-
-    # Upgrade pip
-    echo ""
-    echo -e "${YELLOW}⬆️  Upgrading pip...${NC}"
-    pip install --upgrade pip setuptools wheel
-    echo -e "${GREEN}✅ pip upgraded${NC}"
-
-    # Install dependencies
-    echo ""
-    echo -e "${YELLOW}📥 Installing dependencies...${NC}"
-    pip install -r requirements.txt
-    echo -e "${GREEN}✅ Dependencies installed${NC}"
+# Upgrade pip
+echo ""
+echo -e "${YELLOW}⬆️  Upgrading pip...${NC}"
+if $PYTHON_BIN -m pip install --upgrade pip setuptools wheel --user 2>&1 | grep -q "externally-managed-environment"; then
+    # Handle externally-managed Python (e.g., Homebrew Python on macOS)
+    $PYTHON_BIN -m pip install --break-system-packages --user --upgrade pip setuptools wheel
+    echo -e "${YELLOW}⚠️  Using --break-system-packages flag (externally-managed environment detected)${NC}"
 else
-    echo -e "${YELLOW}⚠️  Skipping virtual environment creation${NC}"
+    $PYTHON_BIN -m pip install --upgrade pip setuptools wheel --user
 fi
+echo -e "${GREEN}✅ pip upgraded${NC}"
+
+# Install dependencies
+echo ""
+echo -e "${YELLOW}📥 Installing dependencies...${NC}"
+if $PYTHON_BIN -m pip install --user -r bot/requirements.txt 2>&1 | grep -q "externally-managed-environment"; then
+    # Handle externally-managed Python (e.g., Homebrew Python on macOS)
+    $PYTHON_BIN -m pip install --break-system-packages --user -r bot/requirements.txt
+    echo -e "${YELLOW}⚠️  Using --break-system-packages flag (externally-managed environment detected)${NC}"
+else
+    $PYTHON_BIN -m pip install --user -r bot/requirements.txt
+fi
+echo -e "${GREEN}✅ Dependencies installed${NC}"
 
 # Create necessary directories
 echo ""
 echo -e "${YELLOW}📁 Creating directories...${NC}"
-mkdir -p store logs
+mkdir -p store bot/logs
 echo -e "${GREEN}✅ Directories created${NC}"
 
 # Copy config templates
@@ -159,7 +152,7 @@ if [ "$NO_TEMPLATES" = false ]; then
 fi
 
 # Set permissions
-chmod +x run.sh 2>/dev/null || true
+chmod +x run-bot.sh run-bridge.sh 2>/dev/null || true
 
 echo ""
 echo -e "${GREEN}✅ Setup complete!${NC}"
@@ -167,5 +160,5 @@ echo ""
 echo "Next steps:"
 echo "1. Edit .env and add your PERPLEXITY_API_KEY"
 echo "2. Edit app.json with your phone number and monitored groups/users"
-echo "3. Run: ./run.sh"
+echo "3. Run: ./run-bot.sh"
 echo ""
