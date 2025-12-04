@@ -8,7 +8,6 @@
       "jid": "GROUP_JID_HERE",
       "name": "Example Group",
       "prompt": "You are a helpful assistant for this group. Respond to questions concisely and be friendly.",
-      "persona": "friendly and helpful",
       "session_memory": {
         "reset_mode": "duration",
         "reset_minutes": 15,
@@ -20,7 +19,6 @@
       "phone": "USER_PHONE_HERE",
       "name": "Example User",
       "prompt": "You are a personal assistant. Help with tasks, reminders, and general questions.",
-      "persona": "professional and organized",
       "response_delay": 0,
       "session_memory": {
         "reset_mode": "time",

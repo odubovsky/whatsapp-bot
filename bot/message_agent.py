@@ -559,7 +559,6 @@ class MessageAgent:
                     prompt_value=self.config.self.prompt,
                     prompt_is_file=getattr(self.config.self, "prompt_is_file", False)
                 )
-                persona = self.config.self.persona
                 debug_enabled = getattr(self.config.self, "debug", True)
                 logger.info(f"Processing self message with prompt: {prompt[:50]}...")
                 session_memory_config = self.config.session_memory
@@ -584,7 +583,6 @@ class MessageAgent:
                     return
 
                 prompt = entity.prompt
-                persona = entity.persona
                 debug_enabled = getattr(entity, "debug", False)
                 prompt = self._resolve_prompt(
                     prompt_value=prompt,
@@ -652,7 +650,6 @@ class MessageAgent:
                         "** DEBUG INFO **\n"
                         f"[User Entry]: {content}\n"
                         f"[Prompt]: {augmented_prompt}\n"
-                        f"[Persona]: {persona}\n"
                         f"[Context]:\n{context_text or 'None'}"
                     )
                     logger.info(f"📤 About to send debug info for message {msg_id} to {chat_jid}")
