@@ -208,15 +208,20 @@ class VitalityConfig:
 class PerplexityConfig:
     """Perplexity API settings"""
     model: str = "llama-3.1-sonar-large-128k-online"
-    temperature: float = 0.7
-    max_tokens: int = 500
 
     def validate(self):
         """Validate Perplexity configuration"""
-        if self.temperature < 0.0 or self.temperature > 1.0:
-            raise ValueError("perplexity.temperature must be between 0.0 and 1.0")
-        if self.max_tokens < 100 or self.max_tokens > 4000:
-            raise ValueError("perplexity.max_tokens must be between 100 and 4000")
+        pass  # Model validation only, temperature/max_tokens are in .env
+
+
+@dataclass
+class OpenAIConfig:
+    """OpenAI API settings"""
+    model: str = "gpt-4o-mini"
+
+    def validate(self):
+        """Validate OpenAI configuration"""
+        pass  # Model validation only, temperature/max_tokens are in .env
 
 
 class Config:
@@ -228,7 +233,34 @@ class Config:
             load_dotenv(env_file, override=True)
         self.env_file = env_file
 
+        # LLM provider selection (from .env)
+        self.llm_provider = os.getenv("LLM_PROVIDER", "perplexity").lower()
+        if self.llm_provider not in ["perplexity", "openai"]:
+            raise ValueError(f"Invalid LLM_PROVIDER: {self.llm_provider}. Must be 'perplexity' or 'openai'")
+
+        # Shared LLM parameters (from .env)
+        llm_temperature_str = os.getenv("LLM_TEMPERATURE", "0.7")
+        try:
+            self.llm_temperature = float(llm_temperature_str)
+        except ValueError:
+            raise ValueError(f"Invalid LLM_TEMPERATURE: {llm_temperature_str}. Must be a float between 0.0 and 1.0")
+        
+        llm_max_tokens_str = os.getenv("LLM_MAX_TOKENS", "500")
+        try:
+            self.llm_max_tokens = int(llm_max_tokens_str)
+        except ValueError:
+            raise ValueError(f"Invalid LLM_MAX_TOKENS: {llm_max_tokens_str}. Must be an integer between 100 and 4000")
+
+        # Validate shared LLM parameters
+        if self.llm_temperature < 0.0 or self.llm_temperature > 1.0:
+            raise ValueError("LLM_TEMPERATURE must be between 0.0 and 1.0")
+        if self.llm_max_tokens < 100 or self.llm_max_tokens > 4000:
+            raise ValueError("LLM_MAX_TOKENS must be between 100 and 4000")
+
+        # API keys (provider-specific)
         self.perplexity_api_key = os.getenv("PERPLEXITY_API_KEY")
+        self.openai_api_key = os.getenv("OPENAI_API_KEY")
+        
         self.log_level = os.getenv("LOG_LEVEL", "INFO")
         # Database path relative to project root
         default_db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "store", "whatsapp_bot.db")
@@ -245,9 +277,11 @@ class Config:
             if os.path.exists(root_config_path):
                 config_file = root_config_path
 
-        # Validate required env vars
-        if not self.perplexity_api_key:
-            raise ValueError("PERPLEXITY_API_KEY not found in .env file")
+        # Validate required env vars based on provider
+        if self.llm_provider == "perplexity" and not self.perplexity_api_key:
+            raise ValueError("PERPLEXITY_API_KEY not found in .env file (required when LLM_PROVIDER=perplexity)")
+        if self.llm_provider == "openai" and not self.openai_api_key:
+            raise ValueError("OPENAI_API_KEY not found in .env file (required when LLM_PROVIDER=openai)")
 
         # Load from app.json
         self.config_file = config_file
@@ -318,8 +352,19 @@ class Config:
         self.vitality = VitalityConfig(**data.get("vitality", {}))
         self.vitality.validate()
 
-        self.perplexity = PerplexityConfig(**data.get("perplexity", {}))
+        # Parse perplexity config (only model, temperature/max_tokens are in .env)
+        perplexity_data = dict(data.get("perplexity", {}))
+        perplexity_data.pop("temperature", None)  # Remove if present (now in .env)
+        perplexity_data.pop("max_tokens", None)  # Remove if present (now in .env)
+        self.perplexity = PerplexityConfig(**perplexity_data)
         self.perplexity.validate()
+
+        # Parse openai config (only model, temperature/max_tokens are in .env)
+        openai_data = dict(data.get("openai", {}))
+        openai_data.pop("temperature", None)  # Remove if present (now in .env)
+        openai_data.pop("max_tokens", None)  # Remove if present (now in .env)
+        self.openai = OpenAIConfig(**openai_data)
+        self.openai.validate()
 
         # Build lookup maps for fast access
         self._build_entity_maps()
@@ -453,9 +498,10 @@ class Config:
                     "message": self.vitality.message
                 },
                 "perplexity": {
-                    "model": self.perplexity.model,
-                    "temperature": self.perplexity.temperature,
-                    "max_tokens": self.perplexity.max_tokens
+                    "model": self.perplexity.model
+                },
+                "openai": {
+                    "model": self.openai.model
                 }
             }
 

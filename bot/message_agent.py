@@ -81,6 +81,69 @@ class PerplexityClient:
             raise
 
 
+class OpenAIClient:
+    """Client for OpenAI API"""
+
+    def __init__(self, api_key: str, model: str, temperature: float, max_tokens: int):
+        """
+        Initialize OpenAI client
+
+        Args:
+            api_key: OpenAI API key
+            model: Model name
+            temperature: Sampling temperature (0.0-1.0)
+            max_tokens: Maximum response tokens
+        """
+        self.api_key = api_key
+        self.model = model
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+        self.base_url = "https://api.openai.com/v1"
+
+    async def chat_completion(self, messages: List[Dict[str, str]]) -> str:
+        """
+        Call OpenAI chat completion API
+
+        Args:
+            messages: List of message dicts with 'role' and 'content'
+
+        Returns:
+            Assistant's response text
+
+        Raises:
+            Exception: If API call fails
+        """
+        url = f"{self.base_url}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(url, json=payload, headers=headers)
+                response.raise_for_status()
+
+                data = response.json()
+                return data["choices"][0]["message"]["content"]
+
+        except httpx.HTTPStatusError as e:
+            logger.error(f"OpenAI API error: {e.response.status_code} - {e.response.text}")
+            logger.error(f"Request payload: {payload}")
+            raise Exception(f"OpenAI API returned {e.response.status_code}")
+
+        except Exception as e:
+            logger.error(f"Error calling OpenAI API: {e}", exc_info=True)
+            raise
+
+
 class MessageAgent:
     """AI response agent"""
 
@@ -97,13 +160,23 @@ class MessageAgent:
         self.db = database
         self.whatsapp = whatsapp_client
 
-        # Initialize Perplexity client
-        self.perplexity = PerplexityClient(
-            api_key=config.perplexity_api_key,
-            model=config.perplexity.model,
-            temperature=config.perplexity.temperature,
-            max_tokens=config.perplexity.max_tokens
-        )
+        # Initialize LLM client based on provider
+        if config.llm_provider == "perplexity":
+            self.llm_client = PerplexityClient(
+                api_key=config.perplexity_api_key,
+                model=config.perplexity.model,
+                temperature=config.llm_temperature,
+                max_tokens=config.llm_max_tokens
+            )
+        elif config.llm_provider == "openai":
+            self.llm_client = OpenAIClient(
+                api_key=config.openai_api_key,
+                model=config.openai.model,
+                temperature=config.llm_temperature,
+                max_tokens=config.llm_max_tokens
+            )
+        else:
+            raise ValueError(f"Unsupported LLM provider: {config.llm_provider}")
 
         self.is_running = False
         # For self-debug chats, drop stale sessions older than this to avoid pulling
@@ -228,13 +301,23 @@ class MessageAgent:
         try:
             new_config = reload_config(self.config.config_file, getattr(self.config, "env_file", ".env"))
             self.config = new_config
-            # Rebuild Perplexity client with new settings
-            self.perplexity = PerplexityClient(
-                api_key=new_config.perplexity_api_key,
-                model=new_config.perplexity.model,
-                temperature=new_config.perplexity.temperature,
-                max_tokens=new_config.perplexity.max_tokens
-            )
+            # Rebuild LLM client with new settings
+            if new_config.llm_provider == "perplexity":
+                self.llm_client = PerplexityClient(
+                    api_key=new_config.perplexity_api_key,
+                    model=new_config.perplexity.model,
+                    temperature=new_config.llm_temperature,
+                    max_tokens=new_config.llm_max_tokens
+                )
+            elif new_config.llm_provider == "openai":
+                self.llm_client = OpenAIClient(
+                    api_key=new_config.openai_api_key,
+                    model=new_config.openai.model,
+                    temperature=new_config.llm_temperature,
+                    max_tokens=new_config.llm_max_tokens
+                )
+            else:
+                raise ValueError(f"Unsupported LLM provider: {new_config.llm_provider}")
             self.self_session_stale_seconds = getattr(new_config.self, "stale_session_seconds", 60)
             self.response_delay_default = getattr(new_config, "response_delay_default", 5)
             self.config_hash = current_hash
@@ -702,7 +785,7 @@ class MessageAgent:
 
     async def query_llm(self, prompt: str, context: List[Dict], message: str, sender: str = None) -> str:
         """
-        Query Perplexity API with message and context
+        Query LLM API with message and context
 
         Args:
             message: User's message
@@ -733,13 +816,13 @@ class MessageAgent:
             # Add the current user message
             messages.append({"role": "user", "content": user_message_with_context})
 
-            logger.info(f"Querying Perplexity with {len(messages)} messages (context in system prompt: {len(context)} entries)")
+            logger.info(f"Querying LLM ({self.config.llm_provider}) with {len(messages)} messages (context in system prompt: {len(context)} entries)")
             logger.debug(f"System prompt: {prompt[:200]}...")
 
-            # Call Perplexity API
-            response = await self.perplexity.chat_completion(messages)
+            # Call LLM API
+            response = await self.llm_client.chat_completion(messages)
 
-            logger.info(f"✅ Received response from Perplexity: {response[:100]}...")
+            logger.info(f"✅ Received response from {self.config.llm_provider}: {response[:100]}...")
 
             return response
 
@@ -765,7 +848,13 @@ if __name__ == "__main__":
         agent = MessageAgent(config, db, whatsapp)
 
         logger.info("✅ Message agent initialized")
-        logger.info(f"  Model: {config.perplexity.model}")
+        logger.info(f"  Provider: {config.llm_provider}")
+        if config.llm_provider == "perplexity":
+            logger.info(f"  Model: {config.perplexity.model}")
+        elif config.llm_provider == "openai":
+            logger.info(f"  Model: {config.openai.model}")
+        logger.info(f"  Temperature: {config.llm_temperature}")
+        logger.info(f"  Max tokens: {config.llm_max_tokens}")
         logger.info(f"  Polling interval: {config.polling.interval_seconds}s")
 
     except Exception as e:

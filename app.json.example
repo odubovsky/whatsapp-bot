@@ -47,8 +47,9 @@
     "message": "🤖 WhatsApp Bot vitality check - All systems operational"
   },
   "perplexity": {
-    "model": "sonar-pro",
-    "temperature": 0.7,
-    "max_tokens": 1000
+    "model": "sonar-pro"
+  },
+  "openai": {
+    "model": "gpt-4o-mini"
   }
 }
