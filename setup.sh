@@ -102,13 +102,25 @@ fi
 # Upgrade pip
 echo ""
 echo -e "${YELLOW}⬆️  Upgrading pip...${NC}"
-$PYTHON_BIN -m pip install --upgrade pip setuptools wheel --user
+if $PYTHON_BIN -m pip install --upgrade pip setuptools wheel --user 2>&1 | grep -q "externally-managed-environment"; then
+    # Handle externally-managed Python (e.g., Homebrew Python on macOS)
+    $PYTHON_BIN -m pip install --break-system-packages --user --upgrade pip setuptools wheel
+    echo -e "${YELLOW}⚠️  Using --break-system-packages flag (externally-managed environment detected)${NC}"
+else
+    $PYTHON_BIN -m pip install --upgrade pip setuptools wheel --user
+fi
 echo -e "${GREEN}✅ pip upgraded${NC}"
 
 # Install dependencies
 echo ""
 echo -e "${YELLOW}📥 Installing dependencies...${NC}"
-$PYTHON_BIN -m pip install --user -r bot/requirements.txt
+if $PYTHON_BIN -m pip install --user -r bot/requirements.txt 2>&1 | grep -q "externally-managed-environment"; then
+    # Handle externally-managed Python (e.g., Homebrew Python on macOS)
+    $PYTHON_BIN -m pip install --break-system-packages --user -r bot/requirements.txt
+    echo -e "${YELLOW}⚠️  Using --break-system-packages flag (externally-managed environment detected)${NC}"
+else
+    $PYTHON_BIN -m pip install --user -r bot/requirements.txt
+fi
 echo -e "${GREEN}✅ Dependencies installed${NC}"
 
 # Create necessary directories
