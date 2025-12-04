@@ -140,7 +140,7 @@ if [ "$NO_TEMPLATES" = false ]; then
 fi
 
 # Set permissions
-chmod +x run.sh 2>/dev/null || true
+chmod +x run-bot.sh 2>/dev/null || true
 
 echo ""
 echo -e "${GREEN}✅ Setup complete!${NC}"
@@ -148,5 +148,5 @@ echo ""
 echo "Next steps:"
 echo "1. Edit .env and add your PERPLEXITY_API_KEY"
 echo "2. Edit app.json with your phone number and monitored groups/users"
-echo "3. Run: ./run.sh"
+echo "3. Run: ./run-bot.sh"
 echo ""

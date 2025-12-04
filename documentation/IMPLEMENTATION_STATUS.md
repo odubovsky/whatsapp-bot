@@ -7,7 +7,7 @@
 - ✅ Configuration templates (.env.example, app.json.example)
 - ✅ requirements.txt with all dependencies
 - ✅ setup.sh (automated environment setup)
-- ✅ run.sh (service runner)
+- ✅ run-bot.sh (bot runner)
 - ✅ .gitignore (security and cleanup)
 
 ### Phase 2: Core Infrastructure
@@ -194,7 +194,7 @@ python main.py --dry-run
 python main.py --qr-only
 
 # Normal run
-./run.sh
+./run-bot.sh
 ```
 
 ## 🐛 Known Issues / Limitations

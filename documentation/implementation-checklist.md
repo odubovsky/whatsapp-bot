@@ -24,7 +24,7 @@ This checklist tracks the implementation progress for the WhatsApp bot project. 
 ### Python Environment
 - [ ] Create `requirements.txt` with all dependencies
 - [ ] Create `setup.sh` script with CLI options
-- [ ] Create `run.sh` script
+- [ ] Create `run-bot.sh` script
 - [ ] Test virtual environment creation
 
 ---

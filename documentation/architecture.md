@@ -540,7 +540,7 @@ async def main():
 │                                     │
 │  Background Process                 │
 │    ↓                                │
-│  /opt/whatsapp-bot/run.sh          │
+│  /opt/whatsapp-bot/run-bot.sh     │
 │    ↓                                │
 │  python3 bot/main.py                │
 │                                     │

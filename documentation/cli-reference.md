@@ -639,12 +639,12 @@ python send_message.py --to 1234567890 --file /path/to/document.pdf --message "H
 
 ---
 
-## Run Script (run.sh)
+## Run Script (run-bot.sh)
 
 ### Usage
 
 ```bash
-./run.sh [ARGS]
+./run-bot.sh [ARGS]
 ```
 
 **Description:**
@@ -656,17 +656,17 @@ python send_message.py --to 1234567890 --file /path/to/document.pdf --message "H
 
 **Normal start:**
 ```bash
-./run.sh
+./run-bot.sh
 ```
 
 **With arguments:**
 ```bash
-./run.sh --log-level DEBUG --no-vitality
+./run-bot.sh --log-level DEBUG --no-vitality
 ```
 
 **Background mode:**
 ```bash
-nohup ./run.sh > /dev/null 2>&1 &
+nohup ./run-bot.sh > /dev/null 2>&1 &
 ```
 
 ---
@@ -692,7 +692,7 @@ python main.py --qr-only
 # 5. Scan QR with phone
 
 # 6. Start service
-./run.sh
+./run-bot.sh
 ```
 
 ### Daily Operation
@@ -747,11 +747,11 @@ python main.py --dry-run
 
 ```bash
 # Run in background using nohup
-nohup ./run.sh > bot/logs/service.log 2>&1 &
+nohup ./run-bot.sh > bot/logs/service.log 2>&1 &
 
 # Or use screen for interactive management
 screen -S whatsapp-bot
-./run.sh
+./run-bot.sh
 # Press Ctrl+A then D to detach
 
 # To reattach later

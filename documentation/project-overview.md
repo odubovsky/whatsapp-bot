@@ -87,7 +87,7 @@ whatsapp-bot/
 ├── app.json.example         # Template
 ├── requirements.txt         # Python dependencies
 ├── setup.sh                 # Automated environment setup
-├── run.sh                   # Service runner script
+├── run-bot.sh               # Bot runner script
 ├── README.md                # User documentation
 ├── .claude/                 # Project documentation
 │   ├── project-overview.md

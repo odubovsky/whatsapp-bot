@@ -197,7 +197,7 @@ DATABASE_PATH=string (default: store/whatsapp_bot.db)
 2. Runs `./setup.sh`
 3. Edits `.env` with API key
 4. Edits `app.json` with groups/users
-5. Runs `./run.sh`
+5. Runs `./run-bot.sh`
 6. Scans QR code in terminal
 7. Receives startup validation message
 8. Bot begins monitoring

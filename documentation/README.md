@@ -56,7 +56,7 @@ Edit `app.json`:
 python3 bot/main.py --qr-only
 
 # After scanning, start service
-./run.sh
+./run-bot.sh
 ```
 
 ## Configuration
@@ -88,7 +88,7 @@ See [.claude/configuration.md](.claude/configuration.md) for complete reference.
 
 ```bash
 # Normal start
-./run.sh
+./run-bot.sh
 
 # Show QR code only
 python3 bot/main.py --qr-only
@@ -113,11 +113,11 @@ python3 bot/main.py --dry-run
 
 ```bash
 # Run in background using nohup or screen/tmux
-nohup ./run.sh > bot/logs/service.log 2>&1 &
+nohup ./run-bot.sh > bot/logs/service.log 2>&1 &
 
 # Or use screen for interactive management
 screen -S whatsapp-bot
-./run.sh
+./run-bot.sh
 # Press Ctrl+A then D to detach
 
 # To reattach later
@@ -137,7 +137,7 @@ whatsapp-bot/
 ├── message_agent.py          # AI integration
 ├── vitality_checker.py       # Health checks
 ├── setup.sh                  # Automated setup
-├── run.sh                    # Service runner
+├── run-bot.sh                # Bot runner script
 └── store/                    # Database storage
 ```
 

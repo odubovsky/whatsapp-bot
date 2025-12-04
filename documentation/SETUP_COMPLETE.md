@@ -53,7 +53,7 @@ cd /Users/odedd/coding/whatsapp-bot/whatsapp-bridge
 
 # Terminal 2: Start Python bot
 cd /Users/odedd/coding/whatsapp-bot
-./run.sh
+./run-bot.sh
 ```
 
 ### Option 2: After QR Scanned (Normal Run)
@@ -179,7 +179,7 @@ python main.py --show-stats
 python main.py --dry-run
 
 # Normal run
-./run.sh
+./run-bot.sh
 
 # With options
 python main.py --log-level DEBUG
