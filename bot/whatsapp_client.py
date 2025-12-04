@@ -7,6 +7,7 @@ The Go bridge handles the actual WhatsApp connection using whatsmeow.
 
 import asyncio
 import logging
+import os
 import subprocess
 import time
 import httpx
