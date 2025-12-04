@@ -1,6 +1,6 @@
 #!/bin/bash
 # WhatsApp Bot Setup Script
-# Automated environment setup with virtual environment creation
+# Automated environment setup
 
 set -e
 
@@ -12,7 +12,6 @@ NC='\033[0m' # No Color
 
 # Default values
 PYTHON_BIN="python3"
-SKIP_VENV=false
 NO_TEMPLATES=false
 INSTALL_SYSTEM=false
 
@@ -26,7 +25,6 @@ Usage: ./setup.sh [OPTIONS]
 Options:
   -h, --help              Show this help message
   --python PATH           Use specific Python binary (default: python3)
-  --skip-venv             Skip virtual environment creation
   --no-templates          Don't create config templates
   --install-system-deps   Install system dependencies (requires sudo)
 
@@ -48,10 +46,6 @@ while [[ $# -gt 0 ]]; do
         --python)
             PYTHON_BIN="$2"
             shift 2
-            ;;
-        --skip-venv)
-            SKIP_VENV=true
-            shift
             ;;
         --no-templates)
             NO_TEMPLATES=true
@@ -95,9 +89,9 @@ if [ "$INSTALL_SYSTEM" = true ]; then
 
     if command -v apt-get &> /dev/null; then
         sudo apt-get update
-        sudo apt-get install -y python3-venv python3-pip qrencode
+        sudo apt-get install -y python3-pip qrencode
     elif command -v yum &> /dev/null; then
-        sudo yum install -y python3-venv python3-pip qrencode
+        sudo yum install -y python3-pip qrencode
     elif command -v brew &> /dev/null; then
         brew install qrencode
     else
@@ -105,35 +99,22 @@ if [ "$INSTALL_SYSTEM" = true ]; then
     fi
 fi
 
-# Create virtual environment
-if [ "$SKIP_VENV" = false ]; then
-    echo ""
-    echo -e "${YELLOW}📦 Creating virtual environment...${NC}"
-    $PYTHON_BIN -m venv venv
-    echo -e "${GREEN}✅ Virtual environment created${NC}"
+# Upgrade pip
+echo ""
+echo -e "${YELLOW}⬆️  Upgrading pip...${NC}"
+$PYTHON_BIN -m pip install --upgrade pip setuptools wheel --user
+echo -e "${GREEN}✅ pip upgraded${NC}"
 
-    # Activate venv
-    source venv/bin/activate
-
-    # Upgrade pip
-    echo ""
-    echo -e "${YELLOW}⬆️  Upgrading pip...${NC}"
-    pip install --upgrade pip setuptools wheel
-    echo -e "${GREEN}✅ pip upgraded${NC}"
-
-    # Install dependencies
-    echo ""
-    echo -e "${YELLOW}📥 Installing dependencies...${NC}"
-    pip install -r bot/requirements.txt
-    echo -e "${GREEN}✅ Dependencies installed${NC}"
-else
-    echo -e "${YELLOW}⚠️  Skipping virtual environment creation${NC}"
-fi
+# Install dependencies
+echo ""
+echo -e "${YELLOW}📥 Installing dependencies...${NC}"
+$PYTHON_BIN -m pip install --user -r bot/requirements.txt
+echo -e "${GREEN}✅ Dependencies installed${NC}"
 
 # Create necessary directories
 echo ""
 echo -e "${YELLOW}📁 Creating directories...${NC}"
-mkdir -p store logs
+mkdir -p store bot/logs
 echo -e "${GREEN}✅ Directories created${NC}"
 
 # Copy config templates

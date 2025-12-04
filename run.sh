@@ -4,14 +4,6 @@
 
 set -e
 
-# Activate virtual environment
-if [ -d "venv" ]; then
-    source venv/bin/activate
-else
-    echo "Error: Virtual environment not found. Run ./setup.sh first"
-    exit 1
-fi
-
 # Set Python path
 export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 
