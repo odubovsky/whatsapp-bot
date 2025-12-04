@@ -296,11 +296,11 @@ pip3 install --user -r bot/requirements.txt
 
 # Copy config templates
 cp .env.example .env
-cp bot/app.json.example bot/app.json
+cp app.json.example app.json
 
 # Edit configs
 nano .env
-nano bot/app.json
+nano app.json
 
 # Run tests
 python3 bot/config.py

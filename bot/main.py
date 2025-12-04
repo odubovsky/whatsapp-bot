@@ -133,8 +133,8 @@ For more info: https://github.com/yourusername/whatsapp-bot
         '--config',
         type=str,
         metavar='FILE',
-        default='bot/app.json',
-        help='Path to config file (default: bot/app.json)'
+        default='app.json',
+        help='Path to config file (default: app.json)'
     )
     config_group.add_argument(
         '--env-file',

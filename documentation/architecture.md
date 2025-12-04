@@ -548,7 +548,7 @@ async def main():
 │  • store/whatsapp_bot.db           │
 │  • bot/logs/whatsapp-bot.log       │
 │  • .env (secrets)                  │
-│  • bot/app.json (config)           │
+│  • app.json (config)                │
 │                                     │
 └─────────────────────────────────────┘
 ```

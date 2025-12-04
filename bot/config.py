@@ -236,16 +236,16 @@ class Config:
         default_db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "store", "whatsapp_bot.db")
         self.database_path = os.getenv("DATABASE_PATH", default_db_path)
         
-        # Default config file path (relative to bot/ directory)
+        # Default config file path (relative to project root)
         if config_file is None:
-            bot_dir = os.path.dirname(__file__)
-            config_file = os.path.join(bot_dir, "app.json")
-        # If config_file is relative and doesn't exist, try relative to bot/ directory
+            project_root = os.path.dirname(os.path.dirname(__file__))
+            config_file = os.path.join(project_root, "app.json")
+        # If config_file is relative and doesn't exist, try relative to project root
         elif not os.path.isabs(config_file) and not os.path.exists(config_file):
-            bot_dir = os.path.dirname(__file__)
-            bot_config_path = os.path.join(bot_dir, config_file)
-            if os.path.exists(bot_config_path):
-                config_file = bot_config_path
+            project_root = os.path.dirname(os.path.dirname(__file__))
+            root_config_path = os.path.join(project_root, config_file)
+            if os.path.exists(root_config_path):
+                config_file = root_config_path
 
         # Validate required env vars
         if not self.perplexity_api_key:
