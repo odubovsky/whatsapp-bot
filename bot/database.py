@@ -8,6 +8,7 @@ session memory, configurable rotation cleanup, and WhatsApp device session.
 import sqlite3
 import json
 import os
+import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 from contextlib import contextmanager
@@ -303,10 +304,15 @@ class Database:
         """, (msg_id,))
         self.conn.commit()
 
-    def fetch_and_lock_messages(self, limit: int = 10, timeout_seconds: int = 300) -> List[Dict]:
+    def fetch_and_lock_messages(self, limit: int = 10, timeout_seconds: int = 300, min_timestamp: datetime = None) -> List[Dict]:
         """
         Atomically fetch unprocessed messages and mark as processing.
         Includes retry logic for timed-out messages.
+
+        Args:
+            limit: Maximum number of messages to fetch
+            timeout_seconds: Seconds before retrying a stuck message
+            min_timestamp: Only fetch messages with timestamp >= this (prevents processing old messages on restart)
         """
         cursor = self.conn.cursor()
         timeout_threshold = datetime.now() - timedelta(seconds=timeout_seconds)
@@ -315,17 +321,32 @@ class Database:
         self.conn.execute("BEGIN IMMEDIATE")
 
         try:
-            # Find messages to process (including own messages for testing/triggering bot)
-            cursor.execute("""
-                SELECT id FROM messages
-                WHERE (
-                    (processing_status = 0)  -- Fresh messages
-                    OR
-                    (processing_status = 1 AND processing_started_at < ? AND retry_count < 3)
-                )
-                ORDER BY timestamp ASC
-                LIMIT ?
-            """, (timeout_threshold, limit))
+            # Build query with optional min_timestamp filter
+            if min_timestamp:
+                # Find messages to process that are newer than min_timestamp
+                cursor.execute("""
+                    SELECT id FROM messages
+                    WHERE timestamp >= ?
+                    AND (
+                        (processing_status = 0)  -- Fresh messages
+                        OR
+                        (processing_status = 1 AND processing_started_at < ? AND retry_count < 3)
+                    )
+                    ORDER BY timestamp ASC
+                    LIMIT ?
+                """, (min_timestamp, timeout_threshold, limit))
+            else:
+                # Find messages to process (including own messages for testing/triggering bot)
+                cursor.execute("""
+                    SELECT id FROM messages
+                    WHERE (
+                        (processing_status = 0)  -- Fresh messages
+                        OR
+                        (processing_status = 1 AND processing_started_at < ? AND retry_count < 3)
+                    )
+                    ORDER BY timestamp ASC
+                    LIMIT ?
+                """, (timeout_threshold, limit))
 
             message_ids = [row[0] for row in cursor.fetchall()]
 
@@ -762,7 +783,8 @@ class Database:
     def sync_from_go_bridge(self, bridge_db_path: str = None,
                             monitored_jids: List[str] = None,
                             include_own_messages: bool = True,
-                            lookback_hours: int = 24) -> int:
+                            lookback_hours: int = 24,
+                            min_timestamp: datetime = None) -> int:
         """
         Sync messages using lookback window instead of MAX(timestamp).
         Handles out-of-order message delivery correctly.
@@ -772,11 +794,13 @@ class Database:
             monitored_jids: List of JIDs to monitor (only sync these chats)
             include_own_messages: If True, sync messages you sent to yourself (for testing/debug)
             lookback_hours: Hours to look back for messages (default 24)
+            min_timestamp: Only sync messages with timestamp >= this (prevents processing old messages on restart)
 
         Returns:
             Number of new messages synced
         """
         import os
+        db_logger = logging.getLogger(__name__)
 
         # Default bridge database path (now in root store/ or /shared/store for Docker)
         if bridge_db_path is None:
@@ -789,17 +813,33 @@ class Database:
                 project_root = os.path.dirname(os.path.dirname(__file__))
                 bridge_db_path = os.path.join(project_root, "store", "messages.db")
 
+        db_logger.debug(f"[Step 3] Bridge DB path resolved: {bridge_db_path}")
+
         if not os.path.exists(bridge_db_path):
+            db_logger.debug(f"[Step 3] Bridge DB not found at: {bridge_db_path}")
             return 0
 
+        db_logger.debug(f"[Step 3] Connecting to bridge DB: {bridge_db_path}")
+
         # Connect to Go bridge database (read-only)
-        bridge_conn = sqlite3.connect(f"file:{bridge_db_path}?mode=ro", uri=True)
-        bridge_conn.row_factory = sqlite3.Row
-        bridge_cursor = bridge_conn.cursor()
+        try:
+            bridge_conn = sqlite3.connect(f"file:{bridge_db_path}?mode=ro", uri=True)
+            bridge_conn.row_factory = sqlite3.Row
+            bridge_cursor = bridge_conn.cursor()
+            db_logger.debug(f"[Step 3] Successfully connected to bridge DB")
+        except Exception as e:
+            db_logger.error(f"[Step 3] Failed to connect to bridge DB: {e}", exc_info=True)
+            return 0
 
         try:
-            # Use lookback window instead of MAX(timestamp)
-            lookback_threshold = datetime.now() - timedelta(hours=lookback_hours)
+            # Use min_timestamp if provided (prevents processing old messages on restart),
+            # otherwise use lookback window
+            if min_timestamp:
+                lookback_threshold = min_timestamp
+                db_logger.debug(f"[Step 3] Using min_timestamp filter: {min_timestamp} (only sync messages after bot startup)")
+            else:
+                lookback_threshold = datetime.now() - timedelta(hours=lookback_hours)
+                db_logger.debug(f"[Step 3] Using lookback window: {lookback_hours} hours")
 
             # Build query to get messages from monitored chats
             if monitored_jids:
@@ -844,6 +884,26 @@ class Database:
 
             bridge_cursor.execute(query, params)
             bridge_messages = bridge_cursor.fetchall()
+
+            db_logger.debug(f"[Step 3] Bridge DB query - Found {len(bridge_messages)} messages in bridge DB")
+            db_logger.debug(f"[Step 3] Bridge DB path: {bridge_db_path}")
+            db_logger.debug(f"[Step 3] Lookback threshold: {lookback_threshold}")
+            db_logger.debug(f"[Step 3] Query params: monitored_jids={monitored_jids}, include_own_messages={include_own_messages}")
+            
+            # Also check total messages in bridge DB for debugging
+            bridge_cursor.execute("SELECT COUNT(*) FROM messages")
+            total_count = bridge_cursor.fetchone()[0]
+            db_logger.debug(f"[Step 3] Total messages in bridge DB: {total_count}")
+            
+            # Check recent messages regardless of filters
+            bridge_cursor.execute("SELECT id, chat_jid, sender, content, timestamp, is_from_me FROM messages ORDER BY timestamp DESC LIMIT 5")
+            recent_messages = bridge_cursor.fetchall()
+            db_logger.debug(f"[Step 3] Recent 5 messages in bridge DB (all chats):")
+            for msg in recent_messages:
+                db_logger.debug(f"[Step 3]   - id={msg['id']}, chat={msg['chat_jid']}, sender={msg['sender']}, is_from_me={msg['is_from_me']}, timestamp={msg['timestamp']}, content_preview={msg['content'][:50] if msg['content'] else 'N/A'}")
+            
+            for msg in bridge_messages[:5]:  # Log first 5 matching messages
+                db_logger.debug(f"[Step 3] Bridge message (matching query): id={msg['id']}, chat={msg['chat_jid']}, sender={msg['sender']}, is_from_me={msg['is_from_me']}, timestamp={msg['timestamp']}, content_preview={msg['content'][:50] if msg['content'] else 'N/A'}")
 
             synced_count = 0
             for msg in bridge_messages:

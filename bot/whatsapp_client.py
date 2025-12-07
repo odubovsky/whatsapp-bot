@@ -129,20 +129,35 @@ class WhatsAppClient:
             raise RuntimeError("Not connected to WhatsApp")
 
         try:
+            send_start_time = time.time()
+            
             logger.info(f"📤 Sending message to {chat_jid} (len={len(content)})")
+            
+            # Step 6: DEBUG logging for bridge send
+            request_payload = {
+                "recipient": chat_jid,
+                "message": content
+            }
+            logger.debug(f"[Step 6] Bridge URL: {self.bridge_url}")
+            logger.debug(f"[Step 6] HTTP Request - POST {self.bridge_url}/api/send")
+            logger.debug(f"[Step 6] Request payload: {json.dumps(request_payload, indent=2)}")
+            logger.debug(f"[Step 6] Full message content ({len(content)} chars): {content}")
 
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     f"{self.bridge_url}/api/send",
-                    json={
-                        "recipient": chat_jid,
-                        "message": content
-                    },
+                    json=request_payload,
                     timeout=30.0
                 )
+                
+                send_duration = time.time() - send_start_time
+                logger.debug(f"[Step 6] HTTP Response - Status: {response.status_code}, Duration: {send_duration:.2f}s")
+                logger.debug(f"[Step 6] HTTP Response headers: {dict(response.headers)}")
+                logger.debug(f"[Step 6] HTTP Response body: {response.text}")
 
                 if response.status_code == 200:
                     result = response.json()
+                    logger.debug(f"[Step 6] Response JSON: {json.dumps(result, indent=2)}")
                     if result.get("success"):
                         logger.info("✅ Message sent successfully")
 
