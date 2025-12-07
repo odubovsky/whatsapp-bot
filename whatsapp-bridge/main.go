@@ -62,13 +62,21 @@ type MessageStore struct {
 
 // Initialize message store
 func NewMessageStore() (*MessageStore, error) {
-	// Create directory for database if it doesn't exist (root store/)
-	if err := os.MkdirAll("../store", 0755); err != nil {
+	// Get shared store path from environment (default: ../store for local, /shared/store for Docker)
+	sharedStorePath := os.Getenv("SHARED_STORE_PATH")
+	if sharedStorePath == "" {
+		// Default to ../store for local development
+		sharedStorePath = "../store"
+	}
+	
+	// Create directory for database if it doesn't exist
+	if err := os.MkdirAll(sharedStorePath, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create store directory: %v", err)
 	}
 
-	// Open SQLite database for messages (in root store/)
-	db, err := sql.Open("sqlite3", "file:../store/messages.db?_foreign_keys=on")
+	// Open SQLite database for messages (in shared store/)
+	dbPath := fmt.Sprintf("%s/messages.db", sharedStorePath)
+	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?_foreign_keys=on", dbPath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open message database: %v", err)
 	}
@@ -958,7 +966,12 @@ func main() {
 		return
 	}
 
-	messageDBPath := "../store/messages.db"
+	// Get shared store path from environment (default: ../store for local, /shared/store for Docker)
+	sharedStorePath := os.Getenv("SHARED_STORE_PATH")
+	if sharedStorePath == "" {
+		sharedStorePath = "../store"
+	}
+	messageDBPath := fmt.Sprintf("%s/messages.db", sharedStorePath)
 	if cfg.ResetMessages {
 		if err := removeFileIfExists(messageDBPath, logger); err != nil {
 			logger.Errorf("Failed to reset message database: %v", err)

@@ -34,8 +34,8 @@ class WhatsAppClient:
         self.is_connected = False
         self.phone_number = config.whatsapp.phone_number
 
-        # Go bridge settings
-        self.bridge_url = "http://localhost:8080"
+        # Go bridge settings (configurable via BRIDGE_URL env var)
+        self.bridge_url = os.getenv("BRIDGE_URL", "http://localhost:8080")
         self.bridge_process = None
 
 
