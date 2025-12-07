@@ -439,6 +439,8 @@ def main():
 
     # Setup logging (check command line arg first, then environment variable, then default)
     log_level = args.log_level or os.getenv("LOG_LEVEL", "INFO")
+    # Log the log level being used (before setup_logging to ensure it appears)
+    print(f"[LOG CONFIG] Using log level: {log_level} (from: {'CLI arg' if args.log_level else 'ENV var' if os.getenv('LOG_LEVEL') else 'default'})")
     setup_logging(log_level, args.log_file, args.quiet)
 
     logger = logging.getLogger(__name__)
