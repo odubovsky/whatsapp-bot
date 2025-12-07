@@ -575,7 +575,7 @@ class MessageAgent:
 
             # === CONFIGURATION MODE CHECK (SELF GROUP ONLY) ===
             if self.config.is_self_message(chat_jid):
-                from config_handler import ConfigurationHandler
+                from bot.config_handler import ConfigurationHandler
                 config_handler = ConfigurationHandler(self.db)
 
                 # Check if entering config mode
