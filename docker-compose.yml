@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   bridge:
     build:
@@ -44,6 +42,8 @@ services:
       - shared-store:/shared/store
     environment:
       - BRIDGE_URL=http://bridge:8080
+    env_file:
+      - .env  
 
 volumes:
   bridge-store:
