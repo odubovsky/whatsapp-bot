@@ -8,6 +8,7 @@ session memory, configurable rotation cleanup, and WhatsApp device session.
 import sqlite3
 import json
 import os
+import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 from contextlib import contextmanager
@@ -777,6 +778,7 @@ class Database:
             Number of new messages synced
         """
         import os
+        db_logger = logging.getLogger(__name__)
 
         # Default bridge database path (now in root store/ or /shared/store for Docker)
         if bridge_db_path is None:
@@ -789,13 +791,23 @@ class Database:
                 project_root = os.path.dirname(os.path.dirname(__file__))
                 bridge_db_path = os.path.join(project_root, "store", "messages.db")
 
+        db_logger.debug(f"[Step 3] Bridge DB path resolved: {bridge_db_path}")
+
         if not os.path.exists(bridge_db_path):
+            db_logger.debug(f"[Step 3] Bridge DB not found at: {bridge_db_path}")
             return 0
 
+        db_logger.debug(f"[Step 3] Connecting to bridge DB: {bridge_db_path}")
+
         # Connect to Go bridge database (read-only)
-        bridge_conn = sqlite3.connect(f"file:{bridge_db_path}?mode=ro", uri=True)
-        bridge_conn.row_factory = sqlite3.Row
-        bridge_cursor = bridge_conn.cursor()
+        try:
+            bridge_conn = sqlite3.connect(f"file:{bridge_db_path}?mode=ro", uri=True)
+            bridge_conn.row_factory = sqlite3.Row
+            bridge_cursor = bridge_conn.cursor()
+            db_logger.debug(f"[Step 3] Successfully connected to bridge DB")
+        except Exception as e:
+            db_logger.error(f"[Step 3] Failed to connect to bridge DB: {e}", exc_info=True)
+            return 0
 
         try:
             # Use lookback window instead of MAX(timestamp)
@@ -845,8 +857,6 @@ class Database:
             bridge_cursor.execute(query, params)
             bridge_messages = bridge_cursor.fetchall()
 
-            import logging
-            db_logger = logging.getLogger(__name__)
             db_logger.debug(f"[Step 3] Bridge DB query - Found {len(bridge_messages)} messages in bridge DB")
             db_logger.debug(f"[Step 3] Bridge DB path: {bridge_db_path}")
             db_logger.debug(f"[Step 3] Lookback threshold: {lookback_threshold}")
