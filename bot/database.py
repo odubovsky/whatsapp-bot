@@ -850,8 +850,22 @@ class Database:
             db_logger.debug(f"[Step 3] Bridge DB query - Found {len(bridge_messages)} messages in bridge DB")
             db_logger.debug(f"[Step 3] Bridge DB path: {bridge_db_path}")
             db_logger.debug(f"[Step 3] Lookback threshold: {lookback_threshold}")
-            for msg in bridge_messages[:5]:  # Log first 5 for brevity
-                db_logger.debug(f"[Step 3] Bridge message: id={msg['id']}, chat={msg['chat_jid']}, sender={msg['sender']}, timestamp={msg['timestamp']}, content_preview={msg['content'][:50] if msg['content'] else 'N/A'}")
+            db_logger.debug(f"[Step 3] Query params: monitored_jids={monitored_jids}, include_own_messages={include_own_messages}")
+            
+            # Also check total messages in bridge DB for debugging
+            bridge_cursor.execute("SELECT COUNT(*) FROM messages")
+            total_count = bridge_cursor.fetchone()[0]
+            db_logger.debug(f"[Step 3] Total messages in bridge DB: {total_count}")
+            
+            # Check recent messages regardless of filters
+            bridge_cursor.execute("SELECT id, chat_jid, sender, content, timestamp, is_from_me FROM messages ORDER BY timestamp DESC LIMIT 5")
+            recent_messages = bridge_cursor.fetchall()
+            db_logger.debug(f"[Step 3] Recent 5 messages in bridge DB (all chats):")
+            for msg in recent_messages:
+                db_logger.debug(f"[Step 3]   - id={msg['id']}, chat={msg['chat_jid']}, sender={msg['sender']}, is_from_me={msg['is_from_me']}, timestamp={msg['timestamp']}, content_preview={msg['content'][:50] if msg['content'] else 'N/A'}")
+            
+            for msg in bridge_messages[:5]:  # Log first 5 matching messages
+                db_logger.debug(f"[Step 3] Bridge message (matching query): id={msg['id']}, chat={msg['chat_jid']}, sender={msg['sender']}, is_from_me={msg['is_from_me']}, timestamp={msg['timestamp']}, content_preview={msg['content'][:50] if msg['content'] else 'N/A'}")
 
             synced_count = 0
             for msg in bridge_messages:
