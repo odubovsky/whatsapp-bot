@@ -845,6 +845,14 @@ class Database:
             bridge_cursor.execute(query, params)
             bridge_messages = bridge_cursor.fetchall()
 
+            import logging
+            db_logger = logging.getLogger(__name__)
+            db_logger.debug(f"[Step 3] Bridge DB query - Found {len(bridge_messages)} messages in bridge DB")
+            db_logger.debug(f"[Step 3] Bridge DB path: {bridge_db_path}")
+            db_logger.debug(f"[Step 3] Lookback threshold: {lookback_threshold}")
+            for msg in bridge_messages[:5]:  # Log first 5 for brevity
+                db_logger.debug(f"[Step 3] Bridge message: id={msg['id']}, chat={msg['chat_jid']}, sender={msg['sender']}, timestamp={msg['timestamp']}, content_preview={msg['content'][:50] if msg['content'] else 'N/A'}")
+
             synced_count = 0
             for msg in bridge_messages:
                 # Insert into our database (INSERT OR IGNORE preserves state)
