@@ -11,7 +11,7 @@ import shutil
 import os
 from typing import Optional, Dict, Tuple
 from datetime import datetime, timezone
-from config import Config
+from bot.config import Config
 
 logger = logging.getLogger(__name__)
 

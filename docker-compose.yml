@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   bridge:
     build:
@@ -18,15 +20,13 @@ services:
       - WHATSAPP_RESET_MESSAGES=${WHATSAPP_RESET_MESSAGES:-false}
       - SHARED_STORE_PATH=/shared/store
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/send"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://bridge:8080/api/send"]
       interval: 30s
       timeout: 10s
       start_period: 40s
       retries: 3
-    # Port 8080 is internal only (not exposed to host)
-    # Uncomment the following to expose for debugging:
-    # ports:
-    #   - "8080:8080"
+    ports:
+      - "8080:8080"
 
   bot:
     build:
@@ -40,44 +40,16 @@ services:
     networks:
       - whatsapp-bot-network
     volumes:
-      # Bot processing database
-      - bot-store:/app/bot/store
-      # Shared messages database (bridge writes, bot reads)
+      - bot-store:/app/store
       - shared-store:/shared/store
-      # Optional: Mount config files for easy editing
-      # - ./app.json:/app/app.json:ro
-      # - ./.env:/app/.env:ro
     environment:
-      # Bridge URL (use Docker service name)
       - BRIDGE_URL=http://bridge:8080
-      # Load all .env variables
-      - LLM_PROVIDER=${LLM_PROVIDER:-perplexity}
-      - LLM_TEMPERATURE=${LLM_TEMPERATURE:-0.7}
-      - LLM_MAX_TOKENS=${LLM_MAX_TOKENS:-500}
-      - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - DATABASE_PATH=/app/bot/store/whatsapp_bot.db
-      - SHARED_STORE_PATH=/shared/store
-    healthcheck:
-      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
-      interval: 30s
-      timeout: 10s
-      start_period: 40s
-      retries: 3
+
+volumes:
+  bridge-store:
+  shared-store:
+  bot-store:
 
 networks:
   whatsapp-bot-network:
     driver: bridge
-
-volumes:
-  # Shared messages database (bridge writes, bot reads)
-  shared-store:
-    driver: local
-  # Bot processing database
-  bot-store:
-    driver: local
-  # Bridge session database and media files
-  bridge-store:
-    driver: local
-
