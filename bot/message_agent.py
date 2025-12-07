@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 import hashlib
 from pathlib import Path
 
-from config import reload_config
+from bot.config import reload_config
 
 logger = logging.getLogger(__name__)
 
