@@ -147,7 +147,7 @@ class OpenAIClient:
 class MessageAgent:
     """AI response agent"""
 
-    def __init__(self, config, database, whatsapp_client):
+    def __init__(self, config, database, whatsapp_client, startup_timestamp=None):
         """
         Initialize message agent
 
@@ -155,10 +155,14 @@ class MessageAgent:
             config: Configuration object
             database: Database instance
             whatsapp_client: WhatsApp client instance
+            startup_timestamp: Timestamp when bot started (only process messages after this)
         """
+        from datetime import datetime
         self.config = config
         self.db = database
         self.whatsapp = whatsapp_client
+        # Store startup timestamp to prevent processing old messages on restart
+        self.startup_timestamp = startup_timestamp or datetime.now()
 
         # Initialize LLM client based on provider
         if config.llm_provider == "perplexity":
@@ -509,7 +513,8 @@ class MessageAgent:
                 logger.debug(f"[Step 3] Starting DB sync - Monitored JIDs: {monitored_jids}")
                 synced_count = self.db.sync_from_go_bridge(
                     monitored_jids=monitored_jids,
-                    lookback_hours=24
+                    lookback_hours=24,
+                    min_timestamp=self.startup_timestamp
                 )
 
                 if synced_count > 0:

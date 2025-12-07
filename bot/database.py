@@ -763,7 +763,8 @@ class Database:
     def sync_from_go_bridge(self, bridge_db_path: str = None,
                             monitored_jids: List[str] = None,
                             include_own_messages: bool = True,
-                            lookback_hours: int = 24) -> int:
+                            lookback_hours: int = 24,
+                            min_timestamp: datetime = None) -> int:
         """
         Sync messages using lookback window instead of MAX(timestamp).
         Handles out-of-order message delivery correctly.
@@ -773,6 +774,7 @@ class Database:
             monitored_jids: List of JIDs to monitor (only sync these chats)
             include_own_messages: If True, sync messages you sent to yourself (for testing/debug)
             lookback_hours: Hours to look back for messages (default 24)
+            min_timestamp: Only sync messages with timestamp >= this (prevents processing old messages on restart)
 
         Returns:
             Number of new messages synced
@@ -810,8 +812,14 @@ class Database:
             return 0
 
         try:
-            # Use lookback window instead of MAX(timestamp)
-            lookback_threshold = datetime.now() - timedelta(hours=lookback_hours)
+            # Use min_timestamp if provided (prevents processing old messages on restart),
+            # otherwise use lookback window
+            if min_timestamp:
+                lookback_threshold = min_timestamp
+                db_logger.debug(f"[Step 3] Using min_timestamp filter: {min_timestamp} (only sync messages after bot startup)")
+            else:
+                lookback_threshold = datetime.now() - timedelta(hours=lookback_hours)
+                db_logger.debug(f"[Step 3] Using lookback window: {lookback_hours} hours")
 
             # Build query to get messages from monitored chats
             if monitored_jids:

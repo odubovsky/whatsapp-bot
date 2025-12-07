@@ -12,7 +12,7 @@ import signal
 import logging
 import sys
 import os
-from datetime import timedelta
+from datetime import datetime, timedelta
 import hashlib
 from pathlib import Path
 from colorlog import ColoredFormatter
@@ -322,6 +322,10 @@ async def run_service(args):
         db.initialize()
         logger.info("✅ Database initialized")
 
+        # Track bot startup timestamp (only process messages after this)
+        startup_timestamp = datetime.now()
+        logger.debug(f"Bot startup timestamp: {startup_timestamp}")
+
         # Store initial config hash
         try:
             cfg_path = Path(config.config_file)
@@ -370,7 +374,7 @@ async def run_service(args):
         # Initialize message agent
         message_agent = None
         if not args.no_polling:
-            message_agent = MessageAgent(config, db, whatsapp)
+            message_agent = MessageAgent(config, db, whatsapp, startup_timestamp=startup_timestamp)
 
         # Initialize vitality checker
         vitality_checker = VitalityChecker(config, whatsapp)
