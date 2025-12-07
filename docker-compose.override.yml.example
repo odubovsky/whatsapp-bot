@@ -1,0 +1,20 @@
+# Example override file for local development
+# Copy this to docker-compose.override.yml to use bind mounts instead of volumes
+# This allows easy editing of config files without rebuilding
+
+version: '3.8'
+
+services:
+  bot:
+    volumes:
+      # Mount config files for easy editing (uncomment to use)
+      - ./app.json:/app/app.json:ro
+      - ./.env:/app/.env:ro
+      # Mount prompts directory for easy editing
+      - ./prompts:/app/prompts:ro
+
+  bridge:
+    # Expose port for debugging (uncomment to use)
+    ports:
+      - "8080:8080"
+

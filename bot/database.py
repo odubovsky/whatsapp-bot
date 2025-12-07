@@ -778,10 +778,16 @@ class Database:
         """
         import os
 
-        # Default bridge database path (now in root store/)
+        # Default bridge database path (now in root store/ or /shared/store for Docker)
         if bridge_db_path is None:
-            project_root = os.path.dirname(os.path.dirname(__file__))
-            bridge_db_path = os.path.join(project_root, "store", "messages.db")
+            # Check for Docker shared store path first
+            shared_store_path = os.getenv("SHARED_STORE_PATH")
+            if shared_store_path:
+                bridge_db_path = os.path.join(shared_store_path, "messages.db")
+            else:
+                # Default to local project root store/
+                project_root = os.path.dirname(os.path.dirname(__file__))
+                bridge_db_path = os.path.join(project_root, "store", "messages.db")
 
         if not os.path.exists(bridge_db_path):
             return 0

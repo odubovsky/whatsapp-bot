@@ -1,0 +1,34 @@
+# Build artifacts
+whatsapp-client
+*.o
+*.a
+
+# Logs
+*.log
+logs/
+
+# Databases
+*.db
+*.db-shm
+*.db-wal
+store/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+
+# Other
+.DS_Store
+*.bak
+*.backup
+
