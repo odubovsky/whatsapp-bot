@@ -437,8 +437,8 @@ def main():
     parser = create_argument_parser()
     args = parser.parse_args()
 
-    # Setup logging
-    log_level = args.log_level or "INFO"
+    # Setup logging (check command line arg first, then environment variable, then default)
+    log_level = args.log_level or os.getenv("LOG_LEVEL", "INFO")
     setup_logging(log_level, args.log_file, args.quiet)
 
     logger = logging.getLogger(__name__)
