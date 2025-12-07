@@ -42,6 +42,7 @@ services:
       - shared-store:/shared/store
     environment:
       - BRIDGE_URL=http://bridge:8080
+      - SHARED_STORE_PATH=/shared/store
     env_file:
       - .env  
 
