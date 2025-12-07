@@ -521,9 +521,9 @@ class MessageAgent:
                     logger.info(f"Synced {synced_count} new message(s) from Go bridge")
                 logger.debug(f"[Step 3] DB sync complete - Synced {synced_count} messages")
 
-                # Atomically fetch and lock messages
-                logger.debug(f"[Step 3] Fetching and locking messages (limit=10, timeout=300s)")
-                messages = self.db.fetch_and_lock_messages(limit=10, timeout_seconds=300)
+                # Atomically fetch and lock messages (only messages after startup)
+                logger.debug(f"[Step 3] Fetching and locking messages (limit=10, timeout=300s, min_timestamp={self.startup_timestamp})")
+                messages = self.db.fetch_and_lock_messages(limit=10, timeout_seconds=300, min_timestamp=self.startup_timestamp)
 
                 if not messages:
                     logger.debug("[Step 3] No messages to process")

@@ -304,10 +304,15 @@ class Database:
         """, (msg_id,))
         self.conn.commit()
 
-    def fetch_and_lock_messages(self, limit: int = 10, timeout_seconds: int = 300) -> List[Dict]:
+    def fetch_and_lock_messages(self, limit: int = 10, timeout_seconds: int = 300, min_timestamp: datetime = None) -> List[Dict]:
         """
         Atomically fetch unprocessed messages and mark as processing.
         Includes retry logic for timed-out messages.
+
+        Args:
+            limit: Maximum number of messages to fetch
+            timeout_seconds: Seconds before retrying a stuck message
+            min_timestamp: Only fetch messages with timestamp >= this (prevents processing old messages on restart)
         """
         cursor = self.conn.cursor()
         timeout_threshold = datetime.now() - timedelta(seconds=timeout_seconds)
@@ -316,17 +321,32 @@ class Database:
         self.conn.execute("BEGIN IMMEDIATE")
 
         try:
-            # Find messages to process (including own messages for testing/triggering bot)
-            cursor.execute("""
-                SELECT id FROM messages
-                WHERE (
-                    (processing_status = 0)  -- Fresh messages
-                    OR
-                    (processing_status = 1 AND processing_started_at < ? AND retry_count < 3)
-                )
-                ORDER BY timestamp ASC
-                LIMIT ?
-            """, (timeout_threshold, limit))
+            # Build query with optional min_timestamp filter
+            if min_timestamp:
+                # Find messages to process that are newer than min_timestamp
+                cursor.execute("""
+                    SELECT id FROM messages
+                    WHERE timestamp >= ?
+                    AND (
+                        (processing_status = 0)  -- Fresh messages
+                        OR
+                        (processing_status = 1 AND processing_started_at < ? AND retry_count < 3)
+                    )
+                    ORDER BY timestamp ASC
+                    LIMIT ?
+                """, (min_timestamp, timeout_threshold, limit))
+            else:
+                # Find messages to process (including own messages for testing/triggering bot)
+                cursor.execute("""
+                    SELECT id FROM messages
+                    WHERE (
+                        (processing_status = 0)  -- Fresh messages
+                        OR
+                        (processing_status = 1 AND processing_started_at < ? AND retry_count < 3)
+                    )
+                    ORDER BY timestamp ASC
+                    LIMIT ?
+                """, (timeout_threshold, limit))
 
             message_ids = [row[0] for row in cursor.fetchall()]
 
