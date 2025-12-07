@@ -119,7 +119,7 @@ For more info: https://github.com/yourusername/whatsapp-bot
         '--db-path',
         type=str,
         metavar='PATH',
-        help='Custom database path (default: store/whatsapp_bot.db)'
+        help='Custom database path (default: bot/store/whatsapp_bot.db)'
     )
     db_group.add_argument(
         '--show-stats',
@@ -237,7 +237,7 @@ def show_stats_and_exit(args):
     """Display database statistics and exit"""
     logger = logging.getLogger(__name__)
     try:
-        db_path = args.db_path or os.path.join(os.path.dirname(os.path.dirname(__file__)), "store", "whatsapp_bot.db")
+        db_path = args.db_path or os.path.join(os.path.dirname(__file__), "store", "whatsapp_bot.db")
         db = Database(db_path)
         stats = db.get_stats()
 

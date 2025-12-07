@@ -62,13 +62,13 @@ type MessageStore struct {
 
 // Initialize message store
 func NewMessageStore() (*MessageStore, error) {
-	// Create directory for database if it doesn't exist
-	if err := os.MkdirAll("store", 0755); err != nil {
+	// Create directory for database if it doesn't exist (root store/)
+	if err := os.MkdirAll("../store", 0755); err != nil {
 		return nil, fmt.Errorf("failed to create store directory: %v", err)
 	}
 
-	// Open SQLite database for messages
-	db, err := sql.Open("sqlite3", "file:store/messages.db?_foreign_keys=on")
+	// Open SQLite database for messages (in root store/)
+	db, err := sql.Open("sqlite3", "file:../store/messages.db?_foreign_keys=on")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open message database: %v", err)
 	}
@@ -958,7 +958,7 @@ func main() {
 		return
 	}
 
-	messageDBPath := "store/messages.db"
+	messageDBPath := "../store/messages.db"
 	if cfg.ResetMessages {
 		if err := removeFileIfExists(messageDBPath, logger); err != nil {
 			logger.Errorf("Failed to reset message database: %v", err)

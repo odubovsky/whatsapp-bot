@@ -19,9 +19,9 @@ class Database:
 
     def __init__(self, db_path: str = None):
         if db_path is None:
-            # Default to store/ in project root
-            project_root = os.path.dirname(os.path.dirname(__file__))
-            db_path = os.path.join(project_root, "store", "whatsapp_bot.db")
+            # Default to bot/store/
+            bot_dir = os.path.dirname(__file__)
+            db_path = os.path.join(bot_dir, "store", "whatsapp_bot.db")
         """Initialize database connection"""
         self.db_path = db_path
         self.conn = None
@@ -768,7 +768,7 @@ class Database:
         Handles out-of-order message delivery correctly.
 
         Args:
-            bridge_db_path: Path to Go bridge messages database (default: whatsapp-bridge/store/messages.db)
+            bridge_db_path: Path to Go bridge messages database (default: store/messages.db)
             monitored_jids: List of JIDs to monitor (only sync these chats)
             include_own_messages: If True, sync messages you sent to yourself (for testing/debug)
             lookback_hours: Hours to look back for messages (default 24)
@@ -778,10 +778,10 @@ class Database:
         """
         import os
 
-        # Default bridge database path
+        # Default bridge database path (now in root store/)
         if bridge_db_path is None:
             project_root = os.path.dirname(os.path.dirname(__file__))
-            bridge_db_path = os.path.join(project_root, "whatsapp-bridge", "store", "messages.db")
+            bridge_db_path = os.path.join(project_root, "store", "messages.db")
 
         if not os.path.exists(bridge_db_path):
             return 0

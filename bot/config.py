@@ -262,8 +262,8 @@ class Config:
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
         
         self.log_level = os.getenv("LOG_LEVEL", "INFO")
-        # Database path relative to project root
-        default_db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "store", "whatsapp_bot.db")
+        # Database path relative to project root (bot/store/)
+        default_db_path = os.path.join(os.path.dirname(__file__), "store", "whatsapp_bot.db")
         self.database_path = os.getenv("DATABASE_PATH", default_db_path)
         
         # Default config file path (relative to project root)
