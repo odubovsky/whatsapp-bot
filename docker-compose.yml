@@ -40,10 +40,8 @@ services:
     volumes:
       - bot-store:/app/store
       - shared-store:/shared/store
-      - ./app.json:/app/app.json
     environment:
       - BRIDGE_URL=http://bridge:8080
-      - SHARED_STORE_PATH=/shared/store
     env_file:
       - .env  
 
