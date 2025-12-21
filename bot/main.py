@@ -12,7 +12,7 @@ import signal
 import logging
 import sys
 import os
-from datetime import datetime, timedelta
+from datetime import timedelta
 import hashlib
 from pathlib import Path
 from colorlog import ColoredFormatter
@@ -322,10 +322,6 @@ async def run_service(args):
         db.initialize()
         logger.info("✅ Database initialized")
 
-        # Track bot startup timestamp (only process messages after this)
-        startup_timestamp = datetime.now()
-        logger.debug(f"Bot startup timestamp: {startup_timestamp}")
-
         # Store initial config hash
         try:
             cfg_path = Path(config.config_file)
@@ -374,7 +370,7 @@ async def run_service(args):
         # Initialize message agent
         message_agent = None
         if not args.no_polling:
-            message_agent = MessageAgent(config, db, whatsapp, startup_timestamp=startup_timestamp)
+            message_agent = MessageAgent(config, db, whatsapp)
 
         # Initialize vitality checker
         vitality_checker = VitalityChecker(config, whatsapp)
@@ -441,10 +437,8 @@ def main():
     parser = create_argument_parser()
     args = parser.parse_args()
 
-    # Setup logging (check command line arg first, then environment variable, then default)
-    log_level = args.log_level or os.getenv("LOG_LEVEL", "INFO")
-    # Log the log level being used (before setup_logging to ensure it appears)
-    print(f"[LOG CONFIG] Using log level: {log_level} (from: {'CLI arg' if args.log_level else 'ENV var' if os.getenv('LOG_LEVEL') else 'default'})")
+    # Setup logging
+    log_level = args.log_level or "INFO"
     setup_logging(log_level, args.log_file, args.quiet)
 
     logger = logging.getLogger(__name__)

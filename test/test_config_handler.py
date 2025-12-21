@@ -8,13 +8,11 @@ def test_trigger_detection():
     from bot.config_handler import ConfigurationHandler
 
     print("Testing trigger detection...")
-    assert ConfigurationHandler.is_config_trigger('/config') == True
-    assert ConfigurationHandler.is_config_trigger('/CONFIG') == True
-    assert ConfigurationHandler.is_config_trigger('/Config') == True
-    assert ConfigurationHandler.is_config_trigger('  /config  ') == True
-    assert ConfigurationHandler.is_config_trigger('bot config') == False
-    assert ConfigurationHandler.is_config_trigger('bot-config') == False
-    assert ConfigurationHandler.is_config_trigger('bot_config') == False
+    assert ConfigurationHandler.is_config_trigger('bot config') == True
+    assert ConfigurationHandler.is_config_trigger('bot-config') == True
+    assert ConfigurationHandler.is_config_trigger('bot_config') == True
+    assert ConfigurationHandler.is_config_trigger('BOT CONFIG') == True
+    assert ConfigurationHandler.is_config_trigger('  bot config  ') == True
     assert ConfigurationHandler.is_config_trigger('hello') == False
     assert ConfigurationHandler.is_config_trigger('') == False
     assert ConfigurationHandler.is_config_trigger('config') == False

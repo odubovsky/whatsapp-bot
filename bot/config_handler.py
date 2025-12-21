@@ -35,7 +35,7 @@ class ConfigurationHandler:
             return False
 
         normalized = message.strip().lower()
-        return normalized == "/config"
+        return normalized in ["bot config", "bot-config", "bot_config"]
 
     @staticmethod
     def is_exit_command(message: str) -> bool:
@@ -143,7 +143,7 @@ class ConfigurationHandler:
         elif current_step == "delay_input":
             return self.handle_delay_input(message, config, session)
         else:
-            return "Invalid session state. Type '/config' to restart or '0' to exit."
+            return "Invalid session state. Type 'bot config' to restart or '0' to exit."
 
     def handle_entity_selection(self, message: str, config: Config, session: Dict) -> str:
         """Handle entity number selection"""
@@ -269,7 +269,7 @@ class ConfigurationHandler:
                 lines.append(f"- Response Delay: {entity.response_delay}s")
                 lines.append("")
                 lines.append("Configuration saved to app.json")
-                lines.append("Type '/config' to modify another entity or continue chatting normally.")
+                lines.append("Type 'bot config' to modify another entity or continue chatting normally.")
 
                 return "\n".join(lines)
             else:
@@ -313,7 +313,7 @@ class ConfigurationHandler:
                 lines.append(f"- Response Delay: {entity.response_delay}s <- Changed")
                 lines.append("")
                 lines.append("Configuration saved to app.json")
-                lines.append("Type '/config' to modify another entity or continue chatting normally.")
+                lines.append("Type 'bot config' to modify another entity or continue chatting normally.")
 
                 return "\n".join(lines)
             else:

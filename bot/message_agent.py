@@ -147,7 +147,7 @@ class OpenAIClient:
 class MessageAgent:
     """AI response agent"""
 
-    def __init__(self, config, database, whatsapp_client, startup_timestamp=None):
+    def __init__(self, config, database, whatsapp_client):
         """
         Initialize message agent
 
@@ -155,14 +155,10 @@ class MessageAgent:
             config: Configuration object
             database: Database instance
             whatsapp_client: WhatsApp client instance
-            startup_timestamp: Timestamp when bot started (only process messages after this)
         """
-        from datetime import datetime
         self.config = config
         self.db = database
         self.whatsapp = whatsapp_client
-        # Store startup timestamp to prevent processing old messages on restart
-        self.startup_timestamp = startup_timestamp or datetime.now()
 
         # Initialize LLM client based on provider
         if config.llm_provider == "perplexity":
@@ -510,29 +506,21 @@ class MessageAgent:
                 if self.config.self.active:
                     monitored_jids.append(self.config.get_self_jid())
 
-                logger.debug(f"[Step 3] Starting DB sync - Monitored JIDs: {monitored_jids}")
                 synced_count = self.db.sync_from_go_bridge(
                     monitored_jids=monitored_jids,
-                    lookback_hours=24,
-                    min_timestamp=self.startup_timestamp
+                    lookback_hours=24
                 )
 
                 if synced_count > 0:
                     logger.info(f"Synced {synced_count} new message(s) from Go bridge")
-                logger.debug(f"[Step 3] DB sync complete - Synced {synced_count} messages")
 
-                # Atomically fetch and lock messages (only messages after startup)
-                logger.debug(f"[Step 3] Fetching and locking messages (limit=10, timeout=300s, min_timestamp={self.startup_timestamp})")
-                messages = self.db.fetch_and_lock_messages(limit=10, timeout_seconds=300, min_timestamp=self.startup_timestamp)
+                # Atomically fetch and lock messages
+                messages = self.db.fetch_and_lock_messages(limit=10, timeout_seconds=300)
 
                 if not messages:
-                    logger.debug("[Step 3] No messages to process")
                     return
 
                 logger.info(f"Processing {len(messages)} new messages...")
-                logger.debug(f"[Step 3] Fetched {len(messages)} messages for processing: {[m['id'] for m in messages]}")
-                for msg in messages:
-                    logger.debug(f"[Step 3] Message to process: id={msg['id']}, chat={msg['chat_jid']}, sender={msg.get('sender', 'N/A')}, content_preview={msg.get('content', '')[:50]}")
 
                 for msg in messages:
                     try:
@@ -829,33 +817,12 @@ class MessageAgent:
             messages.append({"role": "user", "content": user_message_with_context})
 
             logger.info(f"Querying LLM ({self.config.llm_provider}) with {len(messages)} messages (context in system prompt: {len(context)} entries)")
-            
-            # Step 4: DEBUG logging for LLM request
-            import time
-            import json as json_module
-            if self.config.llm_provider == "perplexity":
-                llm_model = self.config.perplexity.model
-            elif self.config.llm_provider == "openai":
-                llm_model = self.config.openai.model
-            else:
-                llm_model = "N/A"
-            logger.debug(f"[Step 4] LLM Request - Provider: {self.config.llm_provider}, Model: {llm_model}")
-            logger.debug(f"[Step 4] LLM Settings - Temperature: {self.config.llm_temperature}, MaxTokens: {self.config.llm_max_tokens}")
-            logger.debug(f"[Step 4] Full system prompt ({len(prompt)} chars): {prompt}")
-            logger.debug(f"[Step 4] User message with context ({len(user_message_with_context)} chars): {user_message_with_context}")
-            logger.debug(f"[Step 4] Context entries: {len(context)}")
-            logger.debug(f"[Step 4] Full request payload: {json_module.dumps(messages, indent=2)}")
-            llm_start_time = time.time()
-            logger.debug(f"[Step 4] Sending request to LLM API...")
+            logger.debug(f"System prompt: {prompt[:200]}...")
 
             # Call LLM API
             response = await self.llm_client.chat_completion(messages)
 
-            # Step 5: DEBUG logging for LLM response
-            llm_duration = time.time() - llm_start_time
             logger.info(f"✅ Received response from {self.config.llm_provider}: {response[:100]}...")
-            logger.debug(f"[Step 5] LLM Response received (duration: {llm_duration:.2f}s)")
-            logger.debug(f"[Step 5] Full response ({len(response)} chars): {response}")
 
             return response
 
